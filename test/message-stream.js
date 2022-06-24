@@ -8,7 +8,7 @@ function _set_up () {
   this.ms = new MessageStream({ main: { } }, 'msg', []);
 }
 
-describe('messagestream', function () {
+describe('message-stream', function () {
 
   beforeEach(_set_up)
 
