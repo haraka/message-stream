@@ -197,10 +197,7 @@ class MessageStream extends Stream {
     }
   }
 
-  /*
-    ** READABLE STREAM
-    */
-
+  //  READABLE STREAM
   _read () {
     const self = this;
     if (!this.end_called) {
@@ -231,9 +228,8 @@ class MessageStream extends Stream {
       });
     }
     else {
-      // Read the message body by line
-      // If we have queued entries, then we didn't
-      // create a queue file, so we read from memory.
+      // Read the message body by line. If we have queued entries, then
+      // we didn't create a queue file, so read from memory.
       if (this._queue.length > 0) {
         // TODO: implement start/end offsets
         for (let i=0; i<this._queue.length; i++) {
@@ -411,9 +407,8 @@ class MessageStream extends Stream {
   }
 }
 
-function indexOfLF (buf, maxlength) {
+function indexOfLF (buf) {
   for (let i=0; i<buf.length; i++) {
-    if (maxlength && (i === maxlength)) break;
     if (buf[i] === 0x0a) return i;
   }
   return -1;
