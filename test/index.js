@@ -1,52 +1,31 @@
 
-// node.js built-in modules
-const assert   = require('assert')
+const assert = require('assert')
+const stream = require('stream')
 
-// npm modules
-const fixtures = require('haraka-test-fixtures')
+const MessageStream = require('../index')
 
-// start of tests
-//    assert: https://nodejs.org/api/assert.html
-//    mocha: http://mochajs.org
+function _set_up () {
+  this.ms = new MessageStream({ main: { } }, 'msg', []);
+}
 
-beforeEach(function (done) {
-  this.plugin = new fixtures.plugin('message-stream')
-  done()  // if a test hangs, assure you called done()
-})
+describe('messagestream', function () {
 
-describe('message-stream', function () {
-  it('loads', function (done) {
-    assert.ok(this.plugin)
-    done()
-  })
-})
+  beforeEach(_set_up)
 
-describe('load_message-stream_ini', function () {
-  it('loads message-stream.ini from config/message-stream.ini', function (done) {
-    this.plugin.load_message-stream_ini()
-    assert.ok(this.plugin.cfg)
+  it('is a Stream', function (done) {
+    assert.ok(this.ms instanceof MessageStream);
+    assert.ok(this.ms instanceof stream.Stream);
     done()
   })
 
-  it('initializes enabled boolean', function (done) {
-    this.plugin.load_message-stream_ini()
-    assert.equal(this.plugin.cfg.main.enabled, true, this.plugin.cfg)
-    done()
-  })
-})
-
-describe('uses text fixtures', function () {
-  it('sets up a connection', function (done) {
-    this.connection = fixtures.connection.createConnection({})
-    assert.ok(this.connection.server)
-    done()
-  })
-
-  it('sets up a transaction', function (done) {
-    this.connection = fixtures.connection.createConnection({})
-    this.connection.transaction = fixtures.transaction.createTransaction({})
-    // console.log(this.connection.transaction)
-    assert.ok(this.connection.transaction.header)
-    done()
+  it('gets message data', function (done) {
+    this.ms.add_line('Header: test\r\n');
+    this.ms.add_line('\r\n');
+    this.ms.add_line('I am body text\r\n');
+    this.ms.add_line_end();
+    this.ms.get_data((data) => {
+      assert.ok(/^[A-Za-z]+: /.test(data.toString()))
+      done()
+    })
   })
 })

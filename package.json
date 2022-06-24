@@ -25,8 +25,12 @@
   "homepage": "https://github.com/haraka/message-stream#readme",
   "devDependencies": {
     "eslint": ">=8",
-    "eslint-haraka": "*",
+    "eslint-plugin-haraka": "*",
     "haraka-test-fixtures": "*",
     "mocha": ">=9"
+  },
+  "dependencies": {
+    "haraka-chunk-emitter": "^1.0.1",
+    "haraka-utils": "^1.0.3"
   }
 }
