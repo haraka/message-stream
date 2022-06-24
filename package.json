@@ -1,10 +1,10 @@
 {
   "name": "haraka-message-stream",
-  "version": "1.1.0",
-  "description": "Haraka message stream library",
+  "version": "1.2.0",
+  "description": "Haraka email message stream",
   "main": "index.js",
   "scripts": {
-    "lint": "npx eslint *.js test/*.js",
+    "lint": "npx eslint *.js test",
     "lintfix": "npx eslint --fix *.js test",
     "versions": "npx dependency-version-checker check",
     "test": "npx mocha"
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "haraka",
+    "email",
     "message-stream"
   ],
   "author": "Haraka Team <haraka.team@gmail.com>",
@@ -29,8 +30,5 @@
     "haraka-test-fixtures": "*",
     "mocha": ">=9"
   },
-  "dependencies": {
-    "haraka-chunk-emitter": "^1.0.1",
-    "haraka-utils": "^1.0.3"
-  }
+  "dependencies": {}
 }

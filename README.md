@@ -4,9 +4,16 @@
 
 # haraka-message-stream
 
+## Used By
 
+- Haraka/transaction.js
+- haraka/test-fixtures/transaction
 
 ## USAGE
+
+```js
+new MessageStream(cfg, uuid, header_list)
+```
 
 
 <!-- leave these buried at the bottom of the document -->
