@@ -1,7 +1,7 @@
 {
   "name": "haraka-message-stream",
   "version": "1.2.0",
-  "description": "Haraka message stream library",
+  "description": "Haraka email message stream",
   "main": "index.js",
   "scripts": {
     "lint": "npx eslint *.js test",
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "haraka",
+    "email",
     "message-stream"
   ],
   "author": "Haraka Team <haraka.team@gmail.com>",

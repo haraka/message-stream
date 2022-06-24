@@ -4,18 +4,20 @@ const EventEmitter = require('events').EventEmitter;
 const fs     = require('fs');
 const Stream = require('stream').Stream;
 
-const STATE_HEADERS = 1;
-const STATE_BODY = 2;
+const STATE = {
+  HEADERS: 1,
+  BODY   : 2,
+};
 
 class MessageStream extends Stream {
-  constructor (cfg, id, headers) {
+  constructor (cfg = {}, id, headers) {
     super();
     if (!id) throw new Error('id required');
     this.uuid = id;
     this.write_ce = null;
     this.read_ce = null;
     this.bytes_read = 0;
-    this.state = STATE_HEADERS;
+    this.state = STATE.HEADERS;
     this.idx = {};
     this.end_called = false;
     this.end_callback = null;
@@ -65,16 +67,16 @@ class MessageStream extends Stream {
     this.bytes_read += line.length;
 
     // Build up an index of 'interesting' data on the fly
-    if (this.state === STATE_HEADERS) {
+    if (this.state === STATE.HEADERS) {
       // Look for end of headers line
       if (line.length === 2 && line[0] === 0x0d && line[1] === 0x0a) {
         this.idx.headers = { start: 0, end: this.bytes_read-line.length };
-        this.state = STATE_BODY;
+        this.state = STATE.BODY;
         this.idx.body = { start: this.bytes_read };
       }
     }
 
-    if (this.state === STATE_BODY) {
+    if (this.state === STATE.BODY) {
       // Look for MIME boundaries
       if (line.length > 4 && line[0] === 0x2d && line[1] == 0x2d) {
         let boundary = line.slice(2).toString().replace(/\s*$/,'');
