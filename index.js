@@ -25,11 +25,11 @@ class MessageStream extends Stream {
     this.total_buffered = 0;
     this._queue = [];
     this.max_data_inflight = 0;
-    this.buffer_max = (!isNaN(cfg.main.spool_after) ? Number(cfg.main.spool_after) : -1);
+    this.buffer_max = (!isNaN(cfg?.main?.spool_after) ? Number(cfg.main.spool_after) : -1);
     this.spooling = false;
     this.fd = null;
     this.open_pending = false;
-    this.spool_dir = cfg.main.spool_dir || '/tmp';
+    this.spool_dir = cfg?.main?.spool_dir || '/tmp';
     this.filename = `${this.spool_dir}/${id}.eml`;
     this.write_pending = false;
 
@@ -70,7 +70,7 @@ class MessageStream extends Stream {
     if (this.state === STATE.HEADERS) {
       // Look for end of headers line
       if (line.length === 2 && line[0] === 0x0d && line[1] === 0x0a) {
-        this.idx.headers = { start: 0, end: this.bytes_read-line.length };
+        this.idx.headers = { start: 0, end: this.bytes_read - line.length };
         this.state = STATE.BODY;
         this.idx.body = { start: this.bytes_read };
       }
@@ -90,7 +90,7 @@ class MessageStream extends Stream {
         else {
           // Start of boundary?
           if (!this.idx[boundary]) {
-            this.idx[boundary] = { start: this.bytes_read-line.length };
+            this.idx[boundary] = { start: this.bytes_read - line.length };
           }
         }
       }
@@ -313,19 +313,19 @@ class MessageStream extends Stream {
     });
   }
 
-  pipe (destination, options) {
+  pipe (destination, options = {}) {
     const self = this;
     if (this.in_pipe) {
       throw new Error('Cannot pipe while currently piping');
     }
     Stream.prototype.pipe.call(this, destination, options);
     // Options
-    this.line_endings = ((options && options.line_endings) ? options.line_endings : "\r\n");
-    this.dot_stuffing = ((options && options.dot_stuffing) ? options.dot_stuffing : false);
-    this.ending_dot   = ((options && options.ending_dot) ? options.ending_dot : false);
-    this.clamd_style  = (!!((options && options.clamd_style)));
-    this.buffer_size  = ((options && options.buffer_size) ? options.buffer_size : 1024 * 64);
-    this.start        = ((options && parseInt(options.start)) ? parseInt(options.start) : 0);
+    this.line_endings = options?.line_endings ?? '\r\n';
+    this.dot_stuffing = options?.dot_stuffing ?? false;
+    this.ending_dot   = options?.ending_dot ?? false;
+    this.clamd_style  = !!options?.clamd_style;
+    this.buffer_size  = options?.buffer_size ?? 1024 * 64;
+    this.start        = (parseInt(options?.start) ? parseInt(options.start) : 0);
     // Reset
     this.in_pipe = true;
     this.readable = true;
