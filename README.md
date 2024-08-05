@@ -15,8 +15,8 @@
 new MessageStream(cfg, uuid, header_list)
 ```
 
-
 <!-- leave these buried at the bottom of the document -->
+
 [ci-img]: https://github.com/haraka/message-stream/actions/workflows/ci.yml/badge.svg
 [ci-url]: https://github.com/haraka/message-stream/actions/workflows/ci.yml
 [clim-img]: https://codeclimate.com/github/haraka/message-stream/badges/gpa.svg
