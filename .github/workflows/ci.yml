@@ -1,12 +1,11 @@
 name: CI
 
-on: [ push ]
+on: [push]
 
 env:
   CI: true
 
 jobs:
-
   lint:
     uses: haraka/.github/.github/workflows/lint.yml@master
 

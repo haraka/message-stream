@@ -1,12 +1,10 @@
-
-const assert   = require('assert')
-const fs       = require('fs')
-const path     = require('path')
+const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 
 const ChunkEmitter = require('../index').ChunkEmitter
 
 describe('chunk-emitter', function () {
-
   beforeEach(function () {
     this.ce = new ChunkEmitter()
     this._written = 0
@@ -18,7 +16,7 @@ describe('chunk-emitter', function () {
 
   it('emits all unbuffered bytes', function (done) {
     const msgPath = path.join(__dirname, 'fixtures', 'haraka-icon-attach.eml')
-    const eml = fs.readFileSync(msgPath, 'utf8');
+    const eml = fs.readFileSync(msgPath, 'utf8')
 
     this._write = (data) => {
       this._written = (this._written || 0) + data.length
@@ -28,8 +26,8 @@ describe('chunk-emitter', function () {
       }
     }
 
-    this.ce.on('data', chunk => {
-      this._write(chunk);
+    this.ce.on('data', (chunk) => {
+      this._write(chunk)
     })
 
     this.ce.fill(eml)
@@ -37,9 +35,13 @@ describe('chunk-emitter', function () {
   })
 
   it('emits all bigger than buffer bytes', function (done) {
-    const msgPath = path.join(__dirname, 'fixtures', 'haraka-tarball-attach.eml')
+    const msgPath = path.join(
+      __dirname,
+      'fixtures',
+      'haraka-tarball-attach.eml',
+    )
     // console.log(`msgPath: ${msgPath}`)
-    const eml = fs.readFileSync(msgPath, 'utf8');
+    const eml = fs.readFileSync(msgPath, 'utf8')
     // console.log(`length: ${eml.length}`)
 
     this._write = (data) => {
@@ -53,9 +55,9 @@ describe('chunk-emitter', function () {
       }
     }
 
-    this.ce.on('data', chunk => {
+    this.ce.on('data', (chunk) => {
       // console.log(`ce.on.data: ${chunk.length} bytes`)
-      this._write(chunk);
+      this._write(chunk)
     })
 
     this.ce.fill(eml)
