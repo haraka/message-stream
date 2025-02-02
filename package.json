@@ -9,7 +9,7 @@
   "scripts": {
     "format": "npm run prettier:fix && npm run lint:fix",
     "lint": "npx eslint@^9 *.js test",
-    "lintfix": "npx eslint@^8 --fix *.js test",
+    "lint:fix": "npx eslint@^9 --fix *.js test",
     "prettier": "npx prettier . --check",
     "prettier:fix": "npx prettier . --write --log-level=warn",
     "test": "npx mocha@^11",
