@@ -1,4 +1,13 @@
+# Changelog
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/).
+
 ### Unreleased
+
+### [1.2.3] - 2025-02-02
+
+- dep(eslint): upgrade to v9
+
 
 ### [1.2.2] - 2024-08-05
 
@@ -28,7 +37,9 @@
 - Import from Haraka
 - convert tests to mocha
 
-[1.1.0]: https://github.com/haraka/message-stream/releases/tag/1.1.0
-[1.2.0]: https://github.com/haraka/message-stream/releases/tag/1.2.0
-[1.2.1]: https://github.com/haraka/message-stream/releases/tag/1.2.1
-[1.2.2]: https://github.com/haraka/message-stream/releases/tag/1.2.2
+[1.1.0]: https://github.com/haraka/message-stream/releases/tag/v1.1.0
+[1.2.0]: https://github.com/haraka/message-stream/releases/tag/v1.2.0
+[1.2.1]: https://github.com/haraka/message-stream/releases/tag/v1.2.1
+[1.2.2]: https://github.com/haraka/message-stream/releases/tag/v1.2.2
+[1.2.3]: https://github.com/haraka/message-stream/releases/tag/v1.2.3
+[1.0.0]: https://github.com/haraka/message-stream/releases/tag/v1.0.0
