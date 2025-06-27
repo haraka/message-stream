@@ -18,7 +18,6 @@ new MessageStream(cfg, uuid, header_list)
 
 Usage of this module is documented in the Haraka [Transaction](https://haraka.github.io/core/Transaction) docs.
 
-
 <!-- leave these buried at the bottom of the document -->
 
 [ci-img]: https://github.com/haraka/message-stream/actions/workflows/ci.yml/badge.svg
