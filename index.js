@@ -41,7 +41,7 @@ class MessageStream extends Stream {
     this.headers_done = false
     this.headers_found_eoh = false
     this.line_endings = '\r\n'
-    this.dot_stuffing = false
+    this.dot_stuffed = true
     this.ending_dot = false
     this.buffer_size = 1024 * 64
     this.start = 0
@@ -279,7 +279,7 @@ class MessageStream extends Stream {
       }
       // Remove dot-stuffing if required
       if (
-        !this.dot_stuffing &&
+        this.dot_stuffed &&
         line.length >= 4 &&
         line[0] === 0x2e &&
         line[1] === 0x2e
@@ -334,7 +334,7 @@ class MessageStream extends Stream {
     Stream.prototype.pipe.call(this, destination, options)
     // Options
     this.line_endings = options?.line_endings ?? '\r\n'
-    this.dot_stuffing = options?.dot_stuffing ?? false
+    this.dot_stuffed = options?.dot_stuffed ?? true
     this.ending_dot = options?.ending_dot ?? false
     this.clamd_style = !!options?.clamd_style
     this.buffer_size = options?.buffer_size ?? 1024 * 64
@@ -463,9 +463,7 @@ class ChunkEmitter extends EventEmitter {
   }
 
   fill(input) {
-    if (typeof input === 'string') {
-      input = Buffer.from(input)
-    }
+    if (typeof input === 'string') input = Buffer.from(input)
 
     // Optimization: don't allocate a new buffer until the input we've
     // had so far is bigger than our buffer size.

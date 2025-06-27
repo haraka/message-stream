@@ -4,6 +4,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.3.0] - 2025-06-27
+
+- change: rename dot_stuffing -> dot_stuffed, consistent with Haraka
+  - improves readability, fixes a case of the not nots
+- doc(README): add ref to Haraka Transaction docs showing usage
+- deps(test-fixtures: bump to latest
+
 ### [1.2.3] - 2025-02-02
 
 - dep(eslint): upgrade to v9
@@ -43,3 +50,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.2.2]: https://github.com/haraka/message-stream/releases/tag/v1.2.2
 [1.2.3]: https://github.com/haraka/message-stream/releases/tag/v1.2.3
 [1.0.0]: https://github.com/haraka/message-stream/releases/tag/v1.0.0
+[1.3.0]: https://github.com/haraka/message-stream/releases/tag/v1.3.0
