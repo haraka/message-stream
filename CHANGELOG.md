@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [1.3.0] - 2025-06-27
 
+- fix: also remove dot-stuffing from leftovers #9
 - change: rename dot_stuffing -> dot_stuffed, consistent with Haraka
   - improves readability, fixes a case of the not nots
 - doc(README): add ref to Haraka Transaction docs showing usage
