@@ -286,10 +286,9 @@ class MessageStream extends Stream {
         continue
       }
 
-      // Remove dot-stuffing if required
       this.remove_dot_stuffing(line)
 
-      // We store lines in native CRLF format; so strip CR if requested
+      // lines are stored in native CRLF format; strip CR if requested
       if (
         this.line_endings === '\n' &&
         line.length >= 2 &&
