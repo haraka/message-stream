@@ -81,7 +81,7 @@ class MessageStream extends Stream {
     if (this.state === STATE.BODY) {
       // Look for MIME boundaries
       if (line.length > 4 && line[0] === 0x2d && line[1] == 0x2d) {
-        let boundary = line.slice(2).toString().replace(/\s*$/, '')
+        let boundary = line.slice(2).toString().trimEnd()
         if (/--\s*$/.test(line)) {
           // End of boundary?
           boundary = boundary.slice(0, -2)
