@@ -264,7 +264,7 @@ class MessageStream extends Stream {
   remove_dot_stuffing(buf) {
     if (!this.dot_stuffed) return
 
-    if (buf.length >= 4 && buf[0] === 0x2E && buf[1] === 0x2E) {
+    if (buf.length >= 4 && buf[0] === 0x2e && buf[1] === 0x2e) {
       buf = buf.slice(1)
     }
   }
@@ -403,7 +403,7 @@ class MessageStream extends Stream {
       } else {
         fs.unlink(this.filename, () => {})
       }
-    } catch (err) {
+    } catch (ignore) {
       // Ignore any errors
     }
   }

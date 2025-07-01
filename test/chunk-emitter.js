@@ -1,66 +1,60 @@
 const assert = require('assert')
+const { describe, it } = require('node:test')
 const fs = require('fs')
 const path = require('path')
 
 const ChunkEmitter = require('../index').ChunkEmitter
 
 describe('chunk-emitter', function () {
-  beforeEach(function () {
-    this.ce = new ChunkEmitter()
-    this._written = 0
-  })
-
-  it('loads', function () {
-    assert.ok(this.ce)
-  })
-
-  it('emits all unbuffered bytes', function (done) {
+  it('emits all unbuffered bytes', async () => {
     const msgPath = path.join(__dirname, 'fixtures', 'haraka-icon-attach.eml')
     const eml = fs.readFileSync(msgPath, 'utf8')
 
-    this._write = (data) => {
-      this._written = (this._written || 0) + data.length
-      if (eml.length === this._written) {
-        assert.equal(eml.length, this._written)
-        done()
-      }
-    }
+    let written = 0
 
-    this.ce.on('data', (chunk) => {
-      this._write(chunk)
+    const ce = new ChunkEmitter()
+
+    const dataPromise = new Promise((resolve) => {
+      ce.on('data', (chunk) => {
+        written += chunk.length
+        if (written === eml.length) {
+          resolve(written)
+        }
+      })
     })
 
-    this.ce.fill(eml)
-    this.ce.end()
+    ce.fill(eml)
+    ce.end()
+
+    const total = await dataPromise
+    assert.equal(total, eml.length)
   })
 
-  it('emits all bigger than buffer bytes', function (done) {
+  it('emits all bigger than buffer bytes', async () => {
     const msgPath = path.join(
       __dirname,
       'fixtures',
       'haraka-tarball-attach.eml',
     )
-    // console.log(`msgPath: ${msgPath}`)
     const eml = fs.readFileSync(msgPath, 'utf8')
-    // console.log(`length: ${eml.length}`)
 
-    this._write = (data) => {
-      // console.log(`_write: ${data.length} bytes`)
-      this._written = this._written + data.length
-      // console.log(`_written: ${this._written}`)
-      if (eml.length === this._written) {
-        assert.equal(eml.length, this._written)
-        // console.log(this.ce)
-        done()
-      }
-    }
+    let written = 0
 
-    this.ce.on('data', (chunk) => {
-      // console.log(`ce.on.data: ${chunk.length} bytes`)
-      this._write(chunk)
+    const ce = new ChunkEmitter()
+
+    const dataPromise = new Promise((resolve) => {
+      ce.on('data', (chunk) => {
+        written += chunk.length
+        if (written === eml.length) {
+          resolve(written)
+        }
+      })
     })
 
-    this.ce.fill(eml)
-    this.ce.end()
+    ce.fill(eml)
+    ce.end()
+
+    const total = await dataPromise
+    assert.equal(total, eml.length)
   })
 })
