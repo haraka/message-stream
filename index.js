@@ -261,6 +261,14 @@ class MessageStream extends Stream {
     }
   }
 
+  remove_dot_stuffing(buf) {
+    if (!this.dot_stuffed) return
+
+    if (buf.length >= 4 && buf[0] === 0x2E && buf[1] === 0x2E) {
+      buf = buf.slice(1)
+    }
+  }
+
   process_buf(buf) {
     let offset = 0
     while ((offset = indexOfLF(buf)) !== -1) {
@@ -277,15 +285,10 @@ class MessageStream extends Stream {
         }
         continue
       }
+
       // Remove dot-stuffing if required
-      if (
-        this.dot_stuffed &&
-        line.length >= 4 &&
-        line[0] === 0x2e &&
-        line[1] === 0x2e
-      ) {
-        line = line.slice(1)
-      }
+      this.remove_dot_stuffing(line)
+
       // We store lines in native CRLF format; so strip CR if requested
       if (
         this.line_endings === '\n' &&
@@ -302,6 +305,7 @@ class MessageStream extends Stream {
     }
     // Check for data left in the buffer
     if (buf.length > 0 && this.headers_found_eoh) {
+      this.remove_dot_stuffing(buf)
       this.read_ce.fill(buf)
     }
   }
