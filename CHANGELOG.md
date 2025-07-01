@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### [1.3.0] - 2025-06-27
 
 - fix: also remove dot-stuffing from leftovers #9
+  - thanks to report at haraka/haraka-plugin-dkim#17
 - fix: replace polynomial regex with trimEnd()
 - change: rename dot_stuffing -> dot_stuffed, consistent with Haraka
   - improves readability, fixes a case of the not nots
