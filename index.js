@@ -265,8 +265,9 @@ class MessageStream extends Stream {
     if (!this.dot_stuffed) return
 
     if (buf.length >= 4 && buf[0] === 0x2e && buf[1] === 0x2e) {
-      buf = buf.slice(1)
+      return buf.slice(1)
     }
+    return buf
   }
 
   process_buf(buf) {
@@ -286,7 +287,7 @@ class MessageStream extends Stream {
         continue
       }
 
-      this.remove_dot_stuffing(line)
+      line = this.remove_dot_stuffing(line)
 
       // lines are stored in native CRLF format; strip CR if requested
       if (
@@ -304,8 +305,7 @@ class MessageStream extends Stream {
     }
     // Check for data left in the buffer
     if (buf.length > 0 && this.headers_found_eoh) {
-      this.remove_dot_stuffing(buf)
-      this.read_ce.fill(buf)
+      this.read_ce.fill(this.remove_dot_stuffing(buf))
     }
   }
 
