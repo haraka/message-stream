@@ -8,12 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - fix: also remove dot-stuffing from leftovers #9
   - thanks to report at haraka/haraka-plugin-dkim#17
+- test: add tests for removing dot-stuffing
 - fix: replace polynomial regex with trimEnd()
 - change: rename dot_stuffing -> dot_stuffed, consistent with Haraka
   - improves readability, fixes a case of the not nots
-- change: switch test runner from mocha -> node --test
+- change: switch test runner from mocha to `node --test`
 - doc(README): add ref to Haraka Transaction docs showing usage
-- deps(test-fixtures: bump to latest
+- deps(test-fixtures): bump to latest
 
 ### [1.2.3] - 2025-02-02
 
