@@ -34,7 +34,8 @@ function getOutputFromStream(inputLines) {
     output.on('data', chunk => chunks.push(chunk.toString()))
     output.on('end', () => resolve(chunks.join('')))
 
-    ms.pipe(output)
+    ms.pipe(output, { dot_stuffed: true })
+
     inputLines.forEach(line => ms.add_line(line))
     ms.add_line_end()
   })
@@ -64,4 +65,6 @@ describe('dot-unstuffing', function () {
     assert.match(result, /^.dot line\r\n/m)
     assert.match(result, /^.\r\n/m)
   })
+
+
 })
