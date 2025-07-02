@@ -403,7 +403,7 @@ class MessageStream extends Stream {
       } else {
         fs.unlink(this.filename, () => {})
       }
-    } catch (ignore) {
+    } catch {
       // Ignore any errors
     }
   }
