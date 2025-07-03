@@ -262,7 +262,7 @@ class MessageStream extends Stream {
   }
 
   remove_dot_stuffing(buf) {
-    if (!this.dot_stuffed) return
+    if (!this.dot_stuffed) return buf
 
     if (buf.length >= 4 && buf[0] === 0x2e && buf[1] === 0x2e) {
       return buf.slice(1)
