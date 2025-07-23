@@ -337,7 +337,14 @@ class MessageStream extends Stream {
     Stream.prototype.pipe.call(this, destination, options)
     // Options
     this.line_endings = options?.line_endings ?? '\r\n'
-    this.dot_stuffed = options?.dot_stuffed ?? true
+    if (options.dot_stuffed === undefined && options.dot_stuffing !== undefined) {
+        // sunset: delete this if block, leaving only the else when Haraka < 3.1 is
+        // no longer supported (2026-?)
+        this.dot_stuffed = ! options.dot_stuffing
+    }
+    else {
+        this.dot_stuffed = options?.dot_stuffed ?? true
+    }
     this.ending_dot = options?.ending_dot ?? false
     this.clamd_style = !!options?.clamd_style
     this.buffer_size = options?.buffer_size ?? 1024 * 64

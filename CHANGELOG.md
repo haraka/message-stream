@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.3.1] - 2025-07-23
+
+- fix: add a compat shim for dot_stuffing on Haraka < 3.1
+
 ### [1.3.0] - 2025-06-27
 
 - fix: also remove dot-stuffing from leftovers #9
@@ -56,3 +60,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.2.3]: https://github.com/haraka/message-stream/releases/tag/v1.2.3
 [1.0.0]: https://github.com/haraka/message-stream/releases/tag/v1.0.0
 [1.3.0]: https://github.com/haraka/message-stream/releases/tag/v1.3.0
+[1.3.1]: https://github.com/haraka/message-stream/releases/tag/v1.3.1
