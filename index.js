@@ -41,7 +41,7 @@ class MessageStream extends Stream {
     this.headers_done = false
     this.headers_found_eoh = false
     this.line_endings = '\r\n'
-    this.dot_stuffed = cfg?.main.dot_stuffed ?? true
+    this.dot_stuffed = cfg?.main?.dot_stuffed ?? true
     this.ending_dot = false
     this.buffer_size = 1024 * 64
     this.start = 0
