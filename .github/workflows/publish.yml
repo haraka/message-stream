@@ -7,10 +7,6 @@ on:
     paths:
       - package.json
 
-permissions:
-  id-token: write
-  contents: read
-
 env:
   CI: true
 
@@ -18,3 +14,9 @@ jobs:
   publish:
     uses: haraka/.github/.github/workflows/publish.yml@master
     secrets: inherit
+
+permissions:
+  id-token: write # required for OIDC
+  contents: write # needed to create tags and releases
+  packages: write
+
