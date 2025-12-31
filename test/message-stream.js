@@ -55,11 +55,10 @@ describe('dot_stuffed = false', function () {
   })
 
   it('leaves normal lines untouched', async () => {
-    const result = await getOutputFromStream([
-      'hello\r\n',
-      '..dot line\r\n',
-      '..\r\n',
-    ], pipeOpts)
+    const result = await getOutputFromStream(
+      ['hello\r\n', '..dot line\r\n', '..\r\n'],
+      pipeOpts,
+    )
 
     assert.equal(result, 'hello\r\n..dot line\r\n..\r\n')
   })
@@ -79,11 +78,10 @@ describe('dot_stuffed = true', function () {
   })
 
   it('leaves normal lines untouched', async () => {
-    const result = await getOutputFromStream([
-      'hello\r\n',
-      '..dot line\r\n',
-      '..\r\n',
-    ], pipeOpts)
+    const result = await getOutputFromStream(
+      ['hello\r\n', '..dot line\r\n', '..\r\n'],
+      pipeOpts,
+    )
 
     assert.equal(result, 'hello\r\n.dot line\r\n.\r\n')
     assert.match(result, /^hello\r\n/m)
@@ -107,11 +105,10 @@ describe('dot_stuffing = false (legacy)', function () {
   })
 
   it('leaves normal lines untouched', async () => {
-    const result = await getOutputFromStream([
-      'hello\r\n',
-      '..dot line\r\n',
-      '..\r\n',
-    ], pipeOpts)
+    const result = await getOutputFromStream(
+      ['hello\r\n', '..dot line\r\n', '..\r\n'],
+      pipeOpts,
+    )
 
     assert.equal(result, 'hello\r\n.dot line\r\n.\r\n')
   })
