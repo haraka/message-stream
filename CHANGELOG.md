@@ -4,7 +4,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
-### [1.3.3] - 2025-12-30
+### [1.3.4] - 2025-12-30
 
 - use optional chaining for c.main.dot_stuffed
 - doc(README): remove code climate badge
@@ -66,4 +66,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.0.0]: https://github.com/haraka/message-stream/releases/tag/v1.0.0
 [1.3.0]: https://github.com/haraka/message-stream/releases/tag/v1.3.0
 [1.3.1]: https://github.com/haraka/message-stream/releases/tag/v1.3.1
-[1.3.3]: https://github.com/haraka/message-stream/releases/tag/v1.3.3
+[1.3.2]: https://github.com/haraka/message-stream/releases/tag/v1.3.2
