@@ -4,6 +4,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.0] - 2026-03-23
+
+#### Added
+
+- docs(README): added pretty good documentation
+- transformers: HeaderSkipper & LineTransformer (separated the concerns)
+- async Iteration: implemented `Symbol.asyncIterator` for `for await...of`.
+- pipeline Architecture: `pipe()` now generates independent `PassThrough` and `Transform` chains per call to support natural backpressure and sequential piping.
+
+#### Changed
+
+- style(exnext): converted `MessageStream` internal state (`#queue`, `#fd`, `#bufferMax`, etc.) to private class fields.
+- style(esnext): replaced `write_complete` polling with a `_write_complete` event listener.
+- source delegation: `pause()` and `resume()` now delegate directly to the active `#currentSource`.
+
+#### Fixed
+
+- error propagation: ensure disk I/O errors correctly propagate via `this.emit('error')`
+- race conditions: updated `destroy()` to close file descriptors before unlinking to prevent `EBADF` errors.
+
 ### [1.3.3] - 2026-03-23
 
 - test: added functional tests, coverage 69 -> 93%
@@ -75,3 +95,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.3.1]: https://github.com/haraka/message-stream/releases/tag/v1.3.1
 [1.3.2]: https://github.com/haraka/message-stream/releases/tag/v1.3.2
 [1.3.3]: https://github.com/haraka/message-stream/releases/tag/v1.3.3
+[2.0.0]: https://github.com/haraka/message-stream/releases/tag/v2.0.0
