@@ -1,4 +1,6 @@
 [![CI Test Status][ci-img]][ci-url]
+[![Qlty][clim-img]][clim-url]
+[![Test Coverage][cov-img]][cov-url]
 
 # haraka-message-stream
 
