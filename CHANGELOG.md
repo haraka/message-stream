@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [1.3.3] - 2026-03-23
 
+- test: added functional tests, coverage 69 -> 93%
+- dep(h-test-fixtures): removed, unused
 - ci publish: more permissions (#14)
 - publish: add read perms (#13)
 
