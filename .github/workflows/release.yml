@@ -1,9 +1,10 @@
-name: publish
+name: release
 
 on:
   push:
     branches:
       - master
+      - main
     paths:
       - package.json
 
@@ -11,12 +12,12 @@ env:
   CI: true
 
 jobs:
-  publish:
-    uses: haraka/.github/.github/workflows/publish.yml@master
+  release:
+    uses: haraka/.github/.github/workflows/release.yml@master
     secrets: inherit
 
-permissions:
-  id-token: write # required for OIDC
-  contents: write # needed to create tags and releases
-  packages: write
-
+  publish:
+    needs: release
+    if: needs.release.outputs.changed == 'true'
+    uses: haraka/.github/.github/workflows/publish.yml@master
+    secrets: inherit
