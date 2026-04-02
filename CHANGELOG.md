@@ -6,7 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.1] - 2026-04-02
 
-
 - fix(pipe): honour `end: false` option to prevent closing destination when piping
 - change: drop legacy dot_stuffing option
 - test: add test coverage for `end: false` option
