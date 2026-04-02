@@ -173,34 +173,20 @@ class MessageStream extends Stream {
     if (this.#inPipe) throw new Error('Cannot pipe while currently piping')
 
     const lineEndings = options?.line_endings ?? '\r\n'
-
-    let dotStuffed
-    if (
-      options.dot_stuffed === undefined &&
-      options.dot_stuffing !== undefined
-    ) {
-      // sunset: delete this block when Haraka < 3.1 is no longer supported (2026-?)
-      dotStuffed = !options.dot_stuffing
-    } else {
-      dotStuffed = options?.dot_stuffed ?? true
-    }
-
-    const endingDot = options?.ending_dot ?? false
-    const clamdStyle = !!options?.clamd_style
     const skipHeaders = !!options?.skip_headers
 
     this.#inPipe = true
 
     const transformer = new LineTransformer({
       lineEndings,
-      dotStuffed,
-      endingDot,
-      clamdStyle,
+      dotStuffed: options?.dot_stuffed ?? true,
+      endingDot: options?.ending_dot ?? false,
+      clamdStyle: !!options?.clamd_style,
     })
     const source = new PassThrough()
     this.#currentSource = source
 
-    source.pipe(transformer).pipe(destination)
+    source.pipe(transformer).pipe(destination, { end: options.end !== false })
 
     transformer.once('end', () => {
       this.#inPipe = false

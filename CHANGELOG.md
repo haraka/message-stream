@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.1] - 2026-04-02
+
+- fix(pipe): honour `end: false` option to prevent closing destination when piping
+- change: drop legacy dot_stuffing option
+- test: add test coverage for `end: false` option
+
 ### [2.0.0] - 2026-03-23
 
 #### Added
@@ -96,3 +102,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.3.2]: https://github.com/haraka/message-stream/releases/tag/v1.3.2
 [1.3.3]: https://github.com/haraka/message-stream/releases/tag/v1.3.3
 [2.0.0]: https://github.com/haraka/message-stream/releases/tag/v2.0.0
+[2.0.1]: https://github.com/haraka/message-stream/releases/tag/v2.0.1
