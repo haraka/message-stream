@@ -119,7 +119,9 @@ describe('pipe end option', () => {
     const ms = new MessageStream({ main: {} }, 'msg', [])
     const dest = new stream.PassThrough()
     let endCalled = false
-    dest.on('finish', () => { endCalled = true })
+    dest.on('finish', () => {
+      endCalled = true
+    })
 
     ms.pipe(dest)
     ms.add_line('hello\r\n')
@@ -133,7 +135,9 @@ describe('pipe end option', () => {
     const ms = new MessageStream({ main: {} }, 'msg', [])
     const dest = new stream.PassThrough()
     let endCalled = false
-    dest.on('finish', () => { endCalled = true })
+    dest.on('finish', () => {
+      endCalled = true
+    })
 
     const chunks = []
     dest.on('data', (chunk) => chunks.push(chunk.toString()))
@@ -144,7 +148,11 @@ describe('pipe end option', () => {
 
     // Wait for data to flow through — use transformer's 'end' signal via a short wait
     await new Promise((resolve) => setTimeout(resolve, 20))
-    assert.equal(endCalled, false, 'destination.end() should not be called when end: false')
+    assert.equal(
+      endCalled,
+      false,
+      'destination.end() should not be called when end: false',
+    )
     assert.ok(chunks.join('').includes('hello'), 'data should still be piped')
   })
 
@@ -152,7 +160,9 @@ describe('pipe end option', () => {
     const ms = new MessageStream({ main: {} }, 'msg', [])
     const dest = new stream.PassThrough()
     let endCalled = false
-    dest.on('finish', () => { endCalled = true })
+    dest.on('finish', () => {
+      endCalled = true
+    })
 
     const chunks = []
     dest.on('data', (chunk) => chunks.push(chunk.toString()))
@@ -166,6 +176,10 @@ describe('pipe end option', () => {
     await new Promise((resolve) => setTimeout(resolve, 20))
     const output = chunks.join('')
     assert.ok(output.endsWith('.\r\n'), 'ending dot must be written')
-    assert.equal(endCalled, false, 'destination must remain open for server response')
+    assert.equal(
+      endCalled,
+      false,
+      'destination must remain open for server response',
+    )
   })
 })
