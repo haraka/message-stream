@@ -113,3 +113,59 @@ describe('dot_stuffing = false (legacy)', function () {
     assert.equal(result, 'hello\r\n.dot line\r\n.\r\n')
   })
 })
+
+describe('pipe end option', () => {
+  it('calls destination.end() by default', async () => {
+    const ms = new MessageStream({ main: {} }, 'msg', [])
+    const dest = new stream.PassThrough()
+    let endCalled = false
+    dest.on('finish', () => { endCalled = true })
+
+    ms.pipe(dest)
+    ms.add_line('hello\r\n')
+    ms.add_line_end()
+
+    await new Promise((resolve) => dest.on('finish', resolve))
+    assert.equal(endCalled, true)
+  })
+
+  it('does not call destination.end() when end: false', async () => {
+    const ms = new MessageStream({ main: {} }, 'msg', [])
+    const dest = new stream.PassThrough()
+    let endCalled = false
+    dest.on('finish', () => { endCalled = true })
+
+    const chunks = []
+    dest.on('data', (chunk) => chunks.push(chunk.toString()))
+
+    ms.pipe(dest, { end: false })
+    ms.add_line('hello\r\n')
+    ms.add_line_end()
+
+    // Wait for data to flow through — use transformer's 'end' signal via a short wait
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.equal(endCalled, false, 'destination.end() should not be called when end: false')
+    assert.ok(chunks.join('').includes('hello'), 'data should still be piped')
+  })
+
+  it('ending_dot with end: false writes dot but does not close destination (smtp_client use case)', async () => {
+    const ms = new MessageStream({ main: {} }, 'msg', [])
+    const dest = new stream.PassThrough()
+    let endCalled = false
+    dest.on('finish', () => { endCalled = true })
+
+    const chunks = []
+    dest.on('data', (chunk) => chunks.push(chunk.toString()))
+
+    ms.pipe(dest, { dot_stuffed: false, ending_dot: true, end: false })
+    ms.add_line('Subject: test\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('body\r\n')
+    ms.add_line_end()
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const output = chunks.join('')
+    assert.ok(output.endsWith('.\r\n'), 'ending dot must be written')
+    assert.equal(endCalled, false, 'destination must remain open for server response')
+  })
+})
