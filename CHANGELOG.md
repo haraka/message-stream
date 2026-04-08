@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.2] - 2026-04-08
 
+- fix: limit header size to prevent memory exhaustion
+- fix: limit boundaries to prevent memory exhaustion
+- fix: sanitize the spool filename, prevent path traversal
+- fix: on Writable stream, set `autoClose: false`
+  - `end` is a noop here, that's for fs.createReadableStream
 - fix: wait until spool WS is flushed before pipe.
-  - non-issue for node 22+, introduced in #19, creates race condition on node <= 20 with older libuv.
+  - non-issue for node 22+, introduced in #19, race condition on node <= 20
 - fix: GetDataStream must extend Writable, not legacy Stream #19
 
 ### [2.0.1] - 2026-04-02
