@@ -6,7 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.2] - 2026-04-08
 
-
 ### [2.0.1] - 2026-04-02
 
 - fix(pipe): honor `end: false` option to prevent closing destination when piping

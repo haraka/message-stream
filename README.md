@@ -184,4 +184,3 @@ This module is used by the Haraka [Transaction](https://haraka.github.io/core/Tr
 [clim-url]: https://qlty.sh/gh/haraka/projects/message-stream
 [cov-img]: https://coveralls.io/repos/github/haraka/message-stream/badge.svg
 [cov-url]: https://coveralls.io/github/haraka/message-stream
-
