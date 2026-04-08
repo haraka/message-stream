@@ -316,6 +316,48 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('get_data() returns full body for spooled messages with ctor headers', async () => {
+    const cfg = {
+      main: {
+        spool_after: 5 * 1024 * 1024, // 5 MB, matches realistic production
+        spool_dir: TMP_DIR,
+      },
+    }
+    // Pass header_list like Haraka's transaction.js does
+    const headers = ['From: a@example.com\r\n', 'To: b@example.com\r\n']
+    const ms = new MessageStream(cfg, 'test-get-data-spool-hdrs', headers)
+
+    // Feed headers + large body
+    ms.add_line('From: a@example.com\r\n')
+    ms.add_line('To: b@example.com\r\n')
+    ms.add_line('\r\n')
+    // 6 MB of 76-character base64-like lines (realistic attachment shape)
+    const line = 'A'.repeat(76) + '\r\n'
+    const linesNeeded = Math.ceil((6 * 1024 * 1024) / line.length)
+    for (let i = 0; i < linesNeeded; i++) {
+      ms.add_line(line)
+    }
+
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    assert.strictEqual(ms.spooling, true, 'message should have been spooled')
+
+    const buffer = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error('get_data callback never fired')),
+        3000,
+      )
+      ms.get_data((data) => {
+        clearTimeout(timeout)
+        resolve(data)
+      })
+    })
+
+    assert.ok(buffer.length > 5 * 1024 * 1024, 'should return full body')
+    const str = buffer.toString('utf8', 0, 200)
+    assert.ok(str.includes('From: a@example.com'), 'should contain headers')
+    ms.destroy()
+  })
+
   it('emits error if spool directory does not exist', async () => {
     const cfg = {
       main: {
