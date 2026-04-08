@@ -29,6 +29,7 @@ class MessageStream extends Stream {
   #openPending = false
   #writePending = false
   #writeComplete = false
+  #wsEnded = false
   #endCalled = false
   #endCallback = null
 
@@ -116,10 +117,23 @@ class MessageStream extends Stream {
       this.spooling = true
 
     if (this.#endCalled && (!this.spooling || !this.#queue.length)) {
-      this.#endCallback?.()
-      if (!this.#writeComplete) {
-        this.#writeComplete = true
-        this.emit('_write_complete')
+      if (this.spooling && this.#ws && !this.#wsEnded) {
+        // SUNSET 2027 (node 20 exits LTS on 2026-04-18)
+        // see test: 'spool file is fully written before add_line_end callback fires'
+        this.#wsEnded = true
+        this.#ws.end(() => {
+          this.#endCallback?.()
+          if (!this.#writeComplete) {
+            this.#writeComplete = true
+            this.emit('_write_complete')
+          }
+        })
+      } else if (!this.#wsEnded) {
+        this.#endCallback?.()
+        if (!this.#writeComplete) {
+          this.#writeComplete = true
+          this.emit('_write_complete')
+        }
       }
       return true
     }
@@ -138,7 +152,7 @@ class MessageStream extends Stream {
       this.#openPending = true
       this.#ws = fs.createWriteStream(this.#filename, {
         flags: 'wx+',
-        end: false,
+        autoClose: false,
       })
       this.#ws.on('open', (fd) => {
         this.#fd = fd

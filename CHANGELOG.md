@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.2] - 2026-04-08
 
+- fix: wait until spool WS is flushed before pipe.
+  - non-issue for node 22+, introduced in #19, creates race condition on node <= 20 with older libuv.
 - fix: GetDataStream must extend Writable, not legacy Stream #19
 
 ### [2.0.1] - 2026-04-02

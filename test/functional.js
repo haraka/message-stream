@@ -73,6 +73,49 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('spool file is fully written before add_line_end callback fires', async () => {
+    // Regression: on Node v20, #endCallback fired when the in-memory queue was
+    // drained but before the fs.WriteStream had flushed to disk.  Reading the
+    // spool file synchronously right after the callback exposes the race.
+    const cfg = {
+      main: {
+        spool_after: 10, // tiny threshold so every line triggers spooling
+        spool_dir: TMP_DIR,
+      },
+    }
+    const id = 'test-spool-flush'
+    const ms = new MessageStream(cfg, id)
+    const spoolFile = path.join(TMP_DIR, `${id}.eml`)
+
+    ms.add_line('Header: 1\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('Line 1\r\n')
+    ms.add_line('Line 2\r\n')
+
+    // The callback must fire only after all data is durably on disk
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    assert.strictEqual(ms.spooling, true, 'Should be spooling')
+
+    // Synchronous read: if the callback fired before the WriteStream flushed,
+    // this will see an empty or truncated file and the assertions will fail.
+    const spoolContent = fs.readFileSync(spoolFile, 'utf8')
+    assert.ok(
+      spoolContent.includes('Header: 1'),
+      'Spool file must contain headers when callback fires',
+    )
+    assert.ok(
+      spoolContent.includes('Line 1'),
+      'Spool file must contain Line 1 when callback fires',
+    )
+    assert.ok(
+      spoolContent.includes('Line 2'),
+      'Spool file must contain Line 2 when callback fires',
+    )
+
+    ms.destroy()
+  })
+
   it('correctly indexes headers and MIME boundaries', async () => {
     const ms = new MessageStream({ main: {} }, 'test-idx')
 
