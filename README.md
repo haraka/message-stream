@@ -174,7 +174,7 @@ ms.on('error', (err) => {
 
 ## REFERENCES
 
-This module is used by the Haraka [Transaction](https://haraka.github.io/core/Transaction).
+This module is used by Haraka [Transaction](https://haraka.github.io/core/Transaction).
 
 <!-- leave these buried at the bottom of the document -->
 
