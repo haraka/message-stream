@@ -4,9 +4,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.2] - 2026-04-08
+
+- fix: limit header size to prevent memory exhaustion
+- fix: limit boundaries to prevent memory exhaustion
+- fix: sanitize the spool filename, prevent path traversal
+- fix: on Writable stream, set `autoClose: false`
+  - `end` is a noop here, that's for fs.createReadableStream
+- fix: wait until spool WS is flushed before pipe.
+  - non-issue for node 22+, introduced in #19, race condition on node <= 20
+- fix: GetDataStream must extend Writable, not legacy Stream #19
+
 ### [2.0.1] - 2026-04-02
 
-- fix(pipe): honour `end: false` option to prevent closing destination when piping
+- fix(pipe): honor `end: false` option to prevent closing destination when piping
 - change: drop legacy dot_stuffing option
 - test: add test coverage for `end: false` option
 
@@ -103,3 +114,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.3.3]: https://github.com/haraka/message-stream/releases/tag/v1.3.3
 [2.0.0]: https://github.com/haraka/message-stream/releases/tag/v2.0.0
 [2.0.1]: https://github.com/haraka/message-stream/releases/tag/v2.0.1
+[2.0.2]: https://github.com/haraka/message-stream/releases/tag/v2.0.2

@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('node:fs')
+const path = require('node:path')
 const { Stream, PassThrough, Writable } = require('node:stream')
 
 const ChunkEmitter = require('./lib/chunk-emitter')
@@ -8,6 +9,7 @@ const HeaderSkipper = require('./lib/header-skipper')
 const LineTransformer = require('./lib/line-transformer')
 
 const STATE = { HEADERS: 1, BODY: 2 }
+const MAX_IDX_KEYS = 1000
 
 class MessageStream extends Stream {
   // Public observable state
@@ -29,8 +31,10 @@ class MessageStream extends Stream {
   #openPending = false
   #writePending = false
   #writeComplete = false
+  #wsEnded = false
   #endCalled = false
   #endCallback = null
+  #idxCount = 0
 
   // Private read-side state
   #inPipe = false
@@ -50,7 +54,7 @@ class MessageStream extends Stream {
       ? Number(cfg.main.spool_after)
       : -1
     this.#spoolDir = cfg?.main?.spool_dir ?? '/tmp'
-    this.#filename = `${this.#spoolDir}/${id}.eml`
+    this.#filename = path.join(this.#spoolDir, `${path.basename(id)}.eml`)
   }
 
   // ── Write side ────────────────────────────────────────────────────────────
@@ -70,8 +74,10 @@ class MessageStream extends Stream {
       // Look for end of headers line
       if (line.length === 2 && line[0] === 0x0d && line[1] === 0x0a) {
         this.idx.headers = { start: 0, end: this.bytes_read - line.length }
+        this.#idxCount++
         this.state = STATE.BODY
         this.idx.body = { start: this.bytes_read }
+        this.#idxCount++
       }
     }
 
@@ -83,8 +89,10 @@ class MessageStream extends Stream {
           boundary = boundary.slice(0, -2)
           if (this.idx[boundary]) this.idx[boundary].end = this.bytes_read
         } else {
-          if (!this.idx[boundary])
+          if (!this.idx[boundary] && this.#idxCount < MAX_IDX_KEYS) {
             this.idx[boundary] = { start: this.bytes_read - line.length }
+            this.#idxCount++
+          }
         }
       }
     }
@@ -116,10 +124,23 @@ class MessageStream extends Stream {
       this.spooling = true
 
     if (this.#endCalled && (!this.spooling || !this.#queue.length)) {
-      this.#endCallback?.()
-      if (!this.#writeComplete) {
-        this.#writeComplete = true
-        this.emit('_write_complete')
+      if (this.spooling && this.#ws && !this.#wsEnded) {
+        // SUNSET 2027 (node 20 exits LTS on 2026-04-18)
+        // see test: 'spool file is fully written before add_line_end callback fires'
+        this.#wsEnded = true
+        this.#ws.end(() => {
+          this.#endCallback?.()
+          if (!this.#writeComplete) {
+            this.#writeComplete = true
+            this.emit('_write_complete')
+          }
+        })
+      } else if (!this.#wsEnded) {
+        this.#endCallback?.()
+        if (!this.#writeComplete) {
+          this.#writeComplete = true
+          this.emit('_write_complete')
+        }
       }
       return true
     }
@@ -138,7 +159,7 @@ class MessageStream extends Stream {
       this.#openPending = true
       this.#ws = fs.createWriteStream(this.#filename, {
         flags: 'wx+',
-        end: false,
+        autoClose: false,
       })
       this.#ws.on('open', (fd) => {
         this.#fd = fd

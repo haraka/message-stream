@@ -73,6 +73,49 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('spool file is fully written before add_line_end callback fires', async () => {
+    // Regression: on Node v20, #endCallback fired when the in-memory queue was
+    // drained but before the fs.WriteStream had flushed to disk.  Reading the
+    // spool file synchronously right after the callback exposes the race.
+    const cfg = {
+      main: {
+        spool_after: 10, // tiny threshold so every line triggers spooling
+        spool_dir: TMP_DIR,
+      },
+    }
+    const id = 'test-spool-flush'
+    const ms = new MessageStream(cfg, id)
+    const spoolFile = path.join(TMP_DIR, `${id}.eml`)
+
+    ms.add_line('Header: 1\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('Line 1\r\n')
+    ms.add_line('Line 2\r\n')
+
+    // The callback must fire only after all data is durably on disk
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    assert.strictEqual(ms.spooling, true, 'Should be spooling')
+
+    // Synchronous read: if the callback fired before the WriteStream flushed,
+    // this will see an empty or truncated file and the assertions will fail.
+    const spoolContent = fs.readFileSync(spoolFile, 'utf8')
+    assert.ok(
+      spoolContent.includes('Header: 1'),
+      'Spool file must contain headers when callback fires',
+    )
+    assert.ok(
+      spoolContent.includes('Line 1'),
+      'Spool file must contain Line 1 when callback fires',
+    )
+    assert.ok(
+      spoolContent.includes('Line 2'),
+      'Spool file must contain Line 2 when callback fires',
+    )
+
+    ms.destroy()
+  })
+
   it('correctly indexes headers and MIME boundaries', async () => {
     const ms = new MessageStream({ main: {} }, 'test-idx')
 
@@ -379,6 +422,76 @@ describe('MessageStream Functional Tests', () => {
     const error = await errorPromise
     assert.ok(error instanceof Error)
     assert.strictEqual(error.code, 'ENOENT')
+    ms.destroy()
+  })
+
+  it('limits the number of keys in idx', async () => {
+    const ms = new MessageStream({ main: {} }, 'test-idx-limit')
+
+    // Headers + Body
+    ms.add_line('Header: 1\r\n')
+    ms.add_line('\r\n')
+
+    // Add 2000 unique boundaries
+    for (let i = 0; i < 2000; i++) {
+      ms.add_line(`--boundary-${i}\r\n`)
+    }
+
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    const idxCount = Object.keys(ms.idx).length
+    assert.ok(
+      idxCount <= 1002,
+      `Idx count should be limited (actual: ${idxCount})`,
+    )
+    // 1002 because headers and body are also indexed
+    ms.destroy()
+  })
+
+  it('prevents path traversal in id', async () => {
+    const id = '../../../../../../../../tmp/pwned'
+    const ms = new MessageStream(
+      { main: { spool_after: 0, spool_dir: TMP_DIR } },
+      id,
+    )
+
+    ms.add_line('test\r\n')
+    ms.add_line_end()
+
+    // Trigger spooling
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    assert.ok(
+      !fs.existsSync('/tmp/pwned.eml'),
+      'Should NOT have created file outside spool dir',
+    )
+    assert.ok(
+      fs.existsSync(path.join(TMP_DIR, 'pwned.eml')),
+      'Should have created file inside spool dir',
+    )
+
+    ms.destroy()
+  })
+
+  it('HeaderSkipper emits error if headers are too large', async () => {
+    const ms = new MessageStream({ main: {} }, 'test-skipper-limit')
+
+    // Send 2MB of data with no LF
+    const largeData = 'A'.repeat(2 * 1024 * 1024)
+    ms.add_line(largeData)
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    const dest = new stream.PassThrough()
+    const errorPromise = new Promise((resolve) => {
+      ms.on('error', (err) => resolve(err))
+    })
+
+    // skip_headers: true triggers HeaderSkipper
+    ms.pipe(dest, { skip_headers: true })
+
+    const error = await errorPromise
+    assert.ok(error instanceof Error)
+    assert.strictEqual(error.message, 'Header size limit exceeded')
     ms.destroy()
   })
 })
