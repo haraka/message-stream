@@ -180,7 +180,8 @@ This module is used by the Haraka [Transaction](https://haraka.github.io/core/Tr
 
 [ci-img]: https://github.com/haraka/message-stream/actions/workflows/ci.yml/badge.svg
 [ci-url]: https://github.com/haraka/message-stream/actions/workflows/ci.yml
-[clim-img]: https://qlty.sh/gh/haraka/projects/message-stream/badges/gpa.svg
+[clim-img]: https://qlty.sh/gh/haraka/projects/message-stream/maintainability.svg
 [clim-url]: https://qlty.sh/gh/haraka/projects/message-stream
 [cov-img]: https://coveralls.io/repos/github/haraka/message-stream/badge.svg
 [cov-url]: https://coveralls.io/github/haraka/message-stream
+

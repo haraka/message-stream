@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.2] - 2026-04-08
+
+
 ### [2.0.1] - 2026-04-02
 
 - fix(pipe): honour `end: false` option to prevent closing destination when piping
@@ -103,3 +106,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.3.3]: https://github.com/haraka/message-stream/releases/tag/v1.3.3
 [2.0.0]: https://github.com/haraka/message-stream/releases/tag/v2.0.0
 [2.0.1]: https://github.com/haraka/message-stream/releases/tag/v2.0.1
+[2.0.2]: https://github.com/haraka/message-stream/releases/tag/v2.0.2
