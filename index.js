@@ -1,7 +1,7 @@
 'use strict'
 
 const fs = require('node:fs')
-const { Stream, PassThrough } = require('node:stream')
+const { Stream, PassThrough, Writable } = require('node:stream')
 
 const ChunkEmitter = require('./lib/chunk-emitter')
 const HeaderSkipper = require('./lib/header-skipper')
@@ -302,26 +302,22 @@ class MessageStream extends Stream {
 
 module.exports = MessageStream
 
-class GetDataStream extends Stream {
+class GetDataStream extends Writable {
   constructor(cb) {
     super()
     this.cb = cb
-    this.buf = Buffer.alloc(0)
-    this.writable = true
+    this.chunks = []
   }
 
-  write(obj) {
-    this.buf = Buffer.concat([this.buf, obj])
-    return true
+  _write(chunk, _enc, done) {
+    this.chunks.push(chunk)
+    done()
   }
 
-  end(obj) {
-    if (obj) this.buf = Buffer.concat([this.buf, obj])
-    this.cb(this.buf)
+  _final(done) {
+    this.cb(Buffer.concat(this.chunks))
+    done()
   }
-
-  destroy() {} // ignore
-  destroySoon() {} // ignore
 }
 
 module.exports.ChunkEmitter = ChunkEmitter
