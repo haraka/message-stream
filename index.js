@@ -207,8 +207,9 @@ class MessageStream extends Stream {
     const source = new PassThrough()
     this.#currentSource = source
 
-    source.pipe(transformer).pipe(destination, { end: options.end !== false })
-
+    // Register before pipe() so these fire before the pipe's own 'end' handler,
+    // which calls destination.end() — potentially triggering a synchronous next()
+    // that would attempt a new pipe() while #inPipe is still true.
     transformer.once('end', () => {
       this.#inPipe = false
     })
@@ -217,6 +218,8 @@ class MessageStream extends Stream {
       this.emit('error', err)
     })
     source.once('error', (err) => this.emit('error', err))
+
+    source.pipe(transformer).pipe(destination, { end: options.end !== false })
 
     // Constructor headers suppress raw-data headers; skip_headers also suppresses ctor headers
     const emitCtorHeaders = this.headers.length > 0 && !skipHeaders

@@ -183,3 +183,44 @@ describe('pipe end option', () => {
     )
   })
 })
+
+describe('sequential pipe', () => {
+  it('allows a second pipe started synchronously from the first pipe end callback', (t, done) => {
+    // Regression test for haraka/Haraka#3551:
+    // When destination.end() is called synchronously inside the 'end' listener
+    // registered by pipe(), and that callback triggers another pipe(), the
+    // #inPipe guard must already be cleared or it throws "Cannot pipe while
+    // currently piping".
+    const ms = new MessageStream({ main: {} }, 'msg', [])
+    ms.add_line('Subject: test\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('body\r\n')
+    ms.add_line_end()
+
+    const chunks1 = []
+    const chunks2 = []
+
+    // First destination: a writable that triggers a second pipe synchronously
+    // inside its end() — simulating what DKIMSignStream does.
+    const dest1 = new stream.Writable({
+      write(chunk, _enc, cb) {
+        chunks1.push(chunk.toString())
+        cb()
+      },
+      final(cb) {
+        cb()
+        // Synchronously start a second pipe, just like DKIMSignStream's callback
+        // calls next() which leads to process_delivery which pipes the stream again.
+        const dest2 = new stream.PassThrough()
+        dest2.on('data', (c) => chunks2.push(c.toString()))
+        dest2.on('end', () => {
+          assert.ok(chunks2.join('').length > 0, 'second pipe received data')
+          done()
+        })
+        ms.pipe(dest2)
+      },
+    })
+
+    ms.pipe(dest1)
+  })
+})
