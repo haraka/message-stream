@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.3] - 2026-04-23
 
-- register `transformer.once('end'...)` before piping
+- register `transformer.once('end'...)` before piping #21
 
 ### [2.0.2] - 2026-04-08
 
