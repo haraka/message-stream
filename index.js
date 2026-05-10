@@ -39,6 +39,7 @@ class MessageStream extends Stream {
   // Private read-side state
   #inPipe = false
   #currentSource = null
+  #activeCleanup = null
 
   // Config
   #bufferMax
@@ -207,17 +208,41 @@ class MessageStream extends Stream {
     const source = new PassThrough()
     this.#currentSource = source
 
+    // Idempotent teardown — resets #inPipe so the next pipe() can proceed
+    // and removes all listeners we registered. See haraka/message-stream#22.
+    let cleanedUp = false
+    let doRead
+    const cleanup = () => {
+      if (cleanedUp) return
+      cleanedUp = true
+      this.#inPipe = false
+      this.#activeCleanup = null
+      if (doRead) this.removeListener('_write_complete', doRead)
+      destination.removeListener('error', cleanup)
+      destination.removeListener('close', cleanup)
+      // Destroy without an error to avoid spurious 'error' emissions.
+      if (!source.destroyed) source.destroy()
+      if (!transformer.destroyed) transformer.destroy()
+    }
+    this.#activeCleanup = cleanup
+
     // Register before pipe() so these fire before the pipe's own 'end' handler,
     // which calls destination.end() — potentially triggering a synchronous next()
     // that would attempt a new pipe() while #inPipe is still true.
-    transformer.once('end', () => {
-      this.#inPipe = false
-    })
+    transformer.once('end', cleanup)
     transformer.once('error', (err) => {
-      this.#inPipe = false
+      cleanup()
       this.emit('error', err)
     })
-    source.once('error', (err) => this.emit('error', err))
+    source.once('error', (err) => {
+      cleanup()
+      this.emit('error', err)
+    })
+
+    // Prepended so cleanup runs before any consumer error handler that calls
+    // next() synchronously. See haraka/message-stream#22.
+    destination.prependOnceListener('error', cleanup)
+    destination.prependOnceListener('close', cleanup)
 
     source.pipe(transformer).pipe(destination, { end: options.end !== false })
 
@@ -225,7 +250,10 @@ class MessageStream extends Stream {
     const emitCtorHeaders = this.headers.length > 0 && !skipHeaders
     const skipRawHeaders = this.headers.length > 0 || skipHeaders
 
-    const doRead = () => {
+    doRead = () => {
+      // If unpipe()/cleanup ran while we were queued on _write_complete or
+      // waiting on an async fs.open, skip the (now invalid) read.
+      if (cleanedUp) return
       if (emitCtorHeaders) {
         for (const h of this.headers) {
           source.write(Buffer.from(h.replace(/\r?\n/g, lineEndings)))
@@ -268,6 +296,11 @@ class MessageStream extends Stream {
           startRead(this.#fd)
         } else {
           fs.open(this.#filename, 'r', (err, fd) => {
+            // Pipe may have been torn down while fs.open was in flight.
+            if (cleanedUp) {
+              if (fd !== undefined) fs.close(fd, () => {})
+              return
+            }
             if (err) {
               this.emit('error', err)
               source.destroy(err)
@@ -287,6 +320,14 @@ class MessageStream extends Stream {
     }
 
     return destination
+  }
+
+  // Synchronously tear down the active pipe. Consumers should call this in
+  // error/timeout handlers before destroying the destination, since
+  // destination.destroy() emits 'close' on a later tick. No-op if idle.
+  // See haraka/message-stream#22.
+  unpipe() {
+    if (this.#activeCleanup) this.#activeCleanup()
   }
 
   pause() {

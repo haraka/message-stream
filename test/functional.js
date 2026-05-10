@@ -334,6 +334,190 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('recovers when destination errors mid-pipe', async () => {
+    // Regression for haraka/message-stream#22.
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const ms = new MessageStream(cfg, 'test-dest-error-recover')
+    ms.add_line('Header: 1\r\n')
+    ms.add_line('\r\n')
+    // Enough data to ensure spool path + multiple write callbacks
+    for (let i = 0; i < 200; i++) {
+      ms.add_line(`Body line ${i} ${'x'.repeat(80)}\r\n`)
+    }
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    // Destination that errors on the first write, mimicking EPIPE.
+    const flaky = new stream.Writable({
+      write(_chunk, _enc, cb) {
+        const err = new Error('write EPIPE')
+        err.code = 'EPIPE'
+        cb(err)
+      },
+    })
+
+    const flakyDone = new Promise((resolve) => {
+      flaky.once('error', () => {
+        // Mirror what a Haraka plugin does on socket error:
+        flaky.destroy()
+        resolve()
+      })
+    })
+
+    ms.pipe(flaky)
+    await flakyDone
+    // Give the upstream pipeline a tick to observe the destination teardown
+    await new Promise((resolve) => setImmediate(resolve))
+
+    // Subsequent pipe() must NOT throw "Cannot pipe while currently piping".
+    const chunks = []
+    const dest = new stream.PassThrough()
+    const pipePromise = new Promise((resolve, reject) => {
+      dest.on('data', (chunk) => chunks.push(chunk))
+      dest.on('end', () => resolve(Buffer.concat(chunks).toString()))
+      dest.on('error', reject)
+    })
+
+    assert.doesNotThrow(() => ms.pipe(dest))
+    const result = await pipePromise
+
+    assert.ok(
+      result.includes('Header: 1'),
+      'second pipe should deliver headers',
+    )
+    assert.ok(
+      result.includes('Body line 0'),
+      'second pipe should deliver body lines',
+    )
+    assert.ok(
+      result.includes('Body line 199'),
+      'second pipe should deliver all body lines',
+    )
+    ms.destroy()
+  })
+
+  it('allows a synchronous re-pipe from a destination error handler', async () => {
+    // Stricter regression for haraka/message-stream#22: locks in the
+    // prependOnceListener semantics so cleanup runs before consumer handlers.
+    const ms = new MessageStream({ main: {} }, 'test-sync-repipe')
+    ms.add_line('Header: 1\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('Body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    const flaky = new stream.Writable({
+      write(_chunk, _enc, cb) {
+        cb(new Error('write EPIPE'))
+      },
+    })
+
+    let secondPipeError = null
+    let secondPipeOk = false
+
+    flaky.on('error', () => {
+      // Plugin pattern: destroy destination, then synchronously kick off the
+      // "next plugin" which tries to pipe again on the same MessageStream.
+      flaky.destroy()
+      try {
+        const dest = new stream.PassThrough()
+        dest.resume() // discard data
+        ms.pipe(dest)
+        secondPipeOk = true
+      } catch (e) {
+        secondPipeError = e
+      }
+    })
+
+    ms.pipe(flaky)
+    // Drain the event loop so the error+re-pipe sequence completes.
+    await new Promise((resolve) => setImmediate(resolve))
+    await new Promise((resolve) => setImmediate(resolve))
+
+    assert.strictEqual(secondPipeError, null, 'sync re-pipe must not throw')
+    assert.strictEqual(secondPipeOk, true, 'sync re-pipe must succeed')
+    ms.destroy()
+  })
+
+  it('cleanup removes all registered listeners (no leaks)', async () => {
+    // Regression for the Copilot findings on haraka/message-stream#23: cleanup
+    // must remove the queued _write_complete listener AND the destination
+    // error/close listeners so they don't accumulate or fire after teardown.
+    const ms = new MessageStream({ main: {} }, 'test-no-leaks')
+    ms.add_line('Hi\r\n')
+
+    // Pipe BEFORE add_line_end — exercises the _write_complete-queued path.
+    const dest1 = new stream.PassThrough()
+    dest1.resume()
+    const wcBefore = ms.listenerCount('_write_complete')
+    ms.pipe(dest1)
+    assert.equal(
+      ms.listenerCount('_write_complete'),
+      wcBefore + 1,
+      'pipe queues a _write_complete listener',
+    )
+    ms.unpipe()
+    assert.equal(
+      ms.listenerCount('_write_complete'),
+      wcBefore,
+      'unpipe removes the queued _write_complete listener',
+    )
+
+    // Happy path: pipe to completion, ensure destination listeners are detached.
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    const dest2 = new stream.PassThrough()
+    dest2.resume()
+    const before = {
+      err: dest2.listenerCount('error'),
+      close: dest2.listenerCount('close'),
+    }
+    await new Promise((resolve) => {
+      dest2.on('end', resolve)
+      ms.pipe(dest2)
+    })
+    assert.equal(
+      dest2.listenerCount('error'),
+      before.err,
+      'destination error listener removed after pipe completes',
+    )
+    assert.equal(
+      dest2.listenerCount('close'),
+      before.close,
+      'destination close listener removed after pipe completes',
+    )
+    ms.destroy()
+  })
+
+  it('unpipe() synchronously frees the stream for a new pipe', async () => {
+    // Covers the async-destroy case in haraka/message-stream#22.
+    const ms = new MessageStream({ main: {} }, 'test-unpipe-sync')
+    ms.add_line('A\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    // Slow consumer: never lets the pipe finish on its own.
+    const slow = new stream.Writable({
+      write(_c, _e, cb) {
+        /* never callback — simulates a stalled remote */
+      },
+    })
+    ms.pipe(slow)
+
+    // Synchronously abort and start a new pipe before any async event fires.
+    ms.unpipe()
+
+    const chunks = []
+    const dest = new stream.PassThrough()
+    const done = new Promise((resolve) => {
+      dest.on('data', (c) => chunks.push(c))
+      dest.on('end', () => resolve(Buffer.concat(chunks).toString()))
+    })
+
+    assert.doesNotThrow(() => ms.pipe(dest))
+    const result = await done
+    assert.ok(result.includes('A'), 'second pipe must deliver content')
+
+    slow.destroy()
+    ms.destroy()
+  })
+
   it('handles sequential piping', async () => {
     const ms = new MessageStream({ main: {} }, 'test-seq-pipe')
     ms.add_line('Test Data\r\n')
