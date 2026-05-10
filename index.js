@@ -208,14 +208,18 @@ class MessageStream extends Stream {
     const source = new PassThrough()
     this.#currentSource = source
 
-    // Idempotent teardown — resets #inPipe so the next pipe() can proceed.
-    // See haraka/message-stream#22.
+    // Idempotent teardown — resets #inPipe so the next pipe() can proceed
+    // and removes all listeners we registered. See haraka/message-stream#22.
     let cleanedUp = false
+    let doRead
     const cleanup = () => {
       if (cleanedUp) return
       cleanedUp = true
       this.#inPipe = false
       this.#activeCleanup = null
+      if (doRead) this.removeListener('_write_complete', doRead)
+      destination.removeListener('error', cleanup)
+      destination.removeListener('close', cleanup)
       // Destroy without an error to avoid spurious 'error' emissions.
       if (!source.destroyed) source.destroy()
       if (!transformer.destroyed) transformer.destroy()
@@ -246,7 +250,10 @@ class MessageStream extends Stream {
     const emitCtorHeaders = this.headers.length > 0 && !skipHeaders
     const skipRawHeaders = this.headers.length > 0 || skipHeaders
 
-    const doRead = () => {
+    doRead = () => {
+      // If unpipe()/cleanup ran while we were queued on _write_complete or
+      // waiting on an async fs.open, skip the (now invalid) read.
+      if (cleanedUp) return
       if (emitCtorHeaders) {
         for (const h of this.headers) {
           source.write(Buffer.from(h.replace(/\r?\n/g, lineEndings)))
@@ -289,6 +296,11 @@ class MessageStream extends Stream {
           startRead(this.#fd)
         } else {
           fs.open(this.#filename, 'r', (err, fd) => {
+            // Pipe may have been torn down while fs.open was in flight.
+            if (cleanedUp) {
+              if (fd !== undefined) fs.close(fd, () => {})
+              return
+            }
             if (err) {
               this.emit('error', err)
               source.destroy(err)

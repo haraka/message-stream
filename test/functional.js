@@ -437,6 +437,55 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('cleanup removes all registered listeners (no leaks)', async () => {
+    // Regression for the Copilot findings on haraka/message-stream#23: cleanup
+    // must remove the queued _write_complete listener AND the destination
+    // error/close listeners so they don't accumulate or fire after teardown.
+    const ms = new MessageStream({ main: {} }, 'test-no-leaks')
+    ms.add_line('Hi\r\n')
+
+    // Pipe BEFORE add_line_end — exercises the _write_complete-queued path.
+    const dest1 = new stream.PassThrough()
+    dest1.resume()
+    const wcBefore = ms.listenerCount('_write_complete')
+    ms.pipe(dest1)
+    assert.equal(
+      ms.listenerCount('_write_complete'),
+      wcBefore + 1,
+      'pipe queues a _write_complete listener',
+    )
+    ms.unpipe()
+    assert.equal(
+      ms.listenerCount('_write_complete'),
+      wcBefore,
+      'unpipe removes the queued _write_complete listener',
+    )
+
+    // Happy path: pipe to completion, ensure destination listeners are detached.
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    const dest2 = new stream.PassThrough()
+    dest2.resume()
+    const before = {
+      err: dest2.listenerCount('error'),
+      close: dest2.listenerCount('close'),
+    }
+    await new Promise((resolve) => {
+      dest2.on('end', resolve)
+      ms.pipe(dest2)
+    })
+    assert.equal(
+      dest2.listenerCount('error'),
+      before.err,
+      'destination error listener removed after pipe completes',
+    )
+    assert.equal(
+      dest2.listenerCount('close'),
+      before.close,
+      'destination close listener removed after pipe completes',
+    )
+    ms.destroy()
+  })
+
   it('unpipe() synchronously frees the stream for a new pipe', async () => {
     // Covers the async-destroy case in haraka/message-stream#22.
     const ms = new MessageStream({ main: {} }, 'test-unpipe-sync')
