@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.4] - 2026-05-10
 
-- fix: add `unpipe` for cleaning up failed pipes. See also #22 and other issues where *Cannot pipe while currently piping* surfaced.
+- fix: add `unpipe` for cleaning up failed pipes. See also #22 and other issues where _Cannot pipe while currently piping_ surfaced.
 
 ### [2.0.3] - 2026-04-23
 
