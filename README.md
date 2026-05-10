@@ -80,6 +80,25 @@ ms.pipe(clamdSocket, {
 ms.pipe(bodyParser, { skip_headers: true, line_endings: '\n' })
 ```
 
+#### `unpipe()` — abort the active pipe
+
+Tears down the internal source/transformer synchronously and frees the stream for a subsequent `pipe()`. Idempotent; no-op when no pipe is active.
+
+**Call `unpipe()` before destroying the destination** when your handler reacts to a mid-stream failure (socket error, scan timeout, etc.) — the destination's `'close'` event is asynchronous, so calling `next()` immediately after `destination.destroy()` would race the cleanup and the next consumer's `pipe()` would throw `Cannot pipe while currently piping`.
+
+```js
+function onError(err) {
+  ms.unpipe() // synchronous teardown
+  socket.destroy()
+  next()
+}
+socket.on('error', onError)
+socket.on('timeout', onError)
+ms.pipe(socket)
+```
+
+The library also installs prepended `'error'` / `'close'` listeners on the destination as a safety net, but consumers that synchronously start a new pipe must call `unpipe()` explicitly. See [haraka/message-stream#22](https://github.com/haraka/message-stream/issues/22).
+
 ### `get_data([options,] callback)` — collect into a Buffer
 
 ```js
@@ -136,6 +155,7 @@ ms.add_line_end(async () => {
 ```js
 ms.pause() // suspend the active pipe's source readable
 ms.resume() // resume it
+ms.unpipe() // abort the active pipe (synchronous; see Reading)
 ms.destroy() // close the spool file descriptor and delete the file
 ```
 
