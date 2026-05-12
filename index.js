@@ -199,9 +199,16 @@ class MessageStream extends Stream {
 
     this.#inPipe = true
 
+    // dot_stuffing is the legacy option name used by Haraka < 3.1 (inverse of dot_stuffed):
+    //   dot_stuffing: true  → dot_stuffed: false (preserve stored dot-stuffing for SMTP)
+    //   dot_stuffing: false → dot_stuffed: true  (unstuff for local delivery/scanning)
+    const dotStuffed =
+      options?.dot_stuffed ??
+      (options?.dot_stuffing !== undefined ? !options.dot_stuffing : true)
+
     const transformer = new LineTransformer({
       lineEndings,
-      dotStuffed: options?.dot_stuffed ?? true,
+      dotStuffed,
       endingDot: options?.ending_dot ?? false,
       clamdStyle: !!options?.clamd_style,
     })

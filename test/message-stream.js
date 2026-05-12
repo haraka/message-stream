@@ -90,8 +90,31 @@ describe('dot_stuffed = true', function () {
   })
 })
 
+describe('dot_stuffing = true (legacy, Haraka < 3.1)', function () {
+  // Haraka < 3.1 passed { dot_stuffing: true } when writing the queue file.
+  // dot_stuffing: true is the inverse of dot_stuffed: false — dots must be preserved.
+  const pipeOpts = { dot_stuffing: true }
+
+  it('does not unstuff "..\\r\\n"', async () => {
+    const result = await getOutputFromStream(['..\r\n'], pipeOpts)
+    assert.equal(result, '..\r\n')
+  })
+
+  it('does not unstuff "..dot start\\r\\n"', async () => {
+    const result = await getOutputFromStream(['..dot start\r\n'], pipeOpts)
+    assert.equal(result, '..dot start\r\n')
+  })
+
+  it('leaves normal lines untouched', async () => {
+    const result = await getOutputFromStream(
+      ['hello\r\n', '..dot line\r\n', '..\r\n'],
+      pipeOpts,
+    )
+    assert.equal(result, 'hello\r\n..dot line\r\n..\r\n')
+  })
+})
+
 describe('dot_stuffing = false (legacy)', function () {
-  // sunset, delete after 2026
   const pipeOpts = { dot_stuffing: false }
 
   it('unstuffs "..\\r\\n" to ".\\r\\n"', async () => {
