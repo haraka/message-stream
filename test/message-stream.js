@@ -23,6 +23,19 @@ describe('message-stream', () => {
     })
     assert.ok(/^[A-Za-z]+: /.test(data.toString()))
   })
+
+  it('boundary index does not pollute Object.prototype', () => {
+    const probe = {}
+    assert.equal(probe.end, undefined, 'precondition: clean prototype')
+
+    const ms = new MessageStream({ main: {} }, 'msg-proto', [])
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('--__proto__--\r\n')
+    ms.add_line_end()
+
+    assert.equal({}.end, undefined, 'Object.prototype.end was mutated')
+  })
 })
 
 function getOutputFromStream(inputLines, pipeOpts) {

@@ -11,12 +11,34 @@ const LineTransformer = require('./lib/line-transformer')
 const STATE = { HEADERS: 1, BODY: 2 }
 const MAX_IDX_KEYS = 1000
 
+// Default spool threshold when cfg.main.spool_after is missing. Previously
+// the missing-value fallback was "never spool", which was an unbounded-memory
+// DoS for an MTA accepting attacker-controlled SMTP data. 25 MiB keeps the
+// vast majority of real-world traffic in RAM while still bounding worst case.
+const SPOOL_AFTER_DEFAULT = 25 * 1024 * 1024
+
+function resolveSpoolAfter(raw) {
+  if (raw === undefined || raw === null) return SPOOL_AFTER_DEFAULT
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  // `-1` is the documented "never spool" sentinel (see Haraka connection.ini).
+  if (n === -1) return Infinity
+  if (!Number.isFinite(n) || n < 0) {
+    console.warn(
+      `message-stream: invalid spool_after=${JSON.stringify(raw)}; using default ${SPOOL_AFTER_DEFAULT}`,
+    )
+    return SPOOL_AFTER_DEFAULT
+  }
+  return n
+}
+
 class MessageStream extends Stream {
   // Public observable state
   uuid
   bytes_read = 0
   state = STATE.HEADERS
-  idx = {}
+  // null-prototype so attacker-controlled boundary names like `__proto__` or
+  // `constructor` can't mutate Object.prototype via `idx[boundary] = ...`.
+  idx = Object.create(null)
   spooling = false
   buffered = 0
   total_buffered = 0
@@ -35,6 +57,7 @@ class MessageStream extends Stream {
   #endCalled = false
   #endCallback = null
   #idxCount = 0
+  #destroyed = false
 
   // Private read-side state
   #inPipe = false
@@ -51,9 +74,7 @@ class MessageStream extends Stream {
     if (!id) throw new Error('id required')
     this.uuid = id
     this.headers = headers ?? []
-    this.#bufferMax = !isNaN(cfg?.main?.spool_after)
-      ? Number(cfg.main.spool_after)
-      : -1
+    this.#bufferMax = resolveSpoolAfter(cfg?.main?.spool_after)
     this.#spoolDir = cfg?.main?.spool_dir ?? '/tmp'
     this.#filename = path.join(this.#spoolDir, `${path.basename(id)}.eml`)
   }
@@ -121,8 +142,7 @@ class MessageStream extends Stream {
 
     if (this.#openPending || this.#writePending) return false
 
-    if (this.#bufferMax !== -1 && this.total_buffered > this.#bufferMax)
-      this.spooling = true
+    if (this.total_buffered > this.#bufferMax) this.spooling = true
 
     if (this.#endCalled && (!this.spooling || !this.#queue.length)) {
       if (this.spooling && this.#ws && !this.#wsEnded) {
@@ -146,10 +166,7 @@ class MessageStream extends Stream {
       return true
     }
 
-    if (
-      this.#bufferMax === -1 ||
-      (this.buffered < this.#bufferMax && !this.spooling)
-    ) {
+    if (this.buffered < this.#bufferMax && !this.spooling) {
       return true
     }
 
@@ -163,8 +180,14 @@ class MessageStream extends Stream {
         autoClose: false,
       })
       this.#ws.on('open', (fd) => {
-        this.#fd = fd
         this.#openPending = false
+        if (this.#destroyed) {
+          // destroy() ran while open was pending; clean up the fd it just
+          // handed us, and remove the spool file we asked to be created.
+          fs.close(fd, () => fs.unlink(this.#filename, () => {}))
+          return
+        }
+        this.#fd = fd
         setImmediate(() => this.#write())
       })
       this.#ws.on('error', (err) => this.emit('error', err))
@@ -346,14 +369,20 @@ class MessageStream extends Stream {
   }
 
   destroy() {
+    this.#destroyed = true
+    // If a spool open is in flight, the open callback handles the cleanup
+    // (it sees #destroyed and closes the fd + unlinks the file there).
+    if (this.#openPending) return
     try {
       if (this.#fd) {
-        fs.close(this.#fd, () => fs.unlink(this.#filename, () => {}))
+        const fd = this.#fd
+        this.#fd = null
+        fs.close(fd, () => fs.unlink(this.#filename, () => {}))
       } else {
         fs.unlink(this.#filename, () => {})
       }
     } catch {
-      // ignore
+      // best-effort cleanup
     }
   }
 

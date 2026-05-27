@@ -19,11 +19,11 @@ const MessageStream = require('haraka-message-stream')
 const ms = new MessageStream(cfg, uuid, headers)
 ```
 
-| Parameter | Type       | Description                                                                                                                 |
-| --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `cfg`     | `object`   | Haraka config object. Reads `cfg.main.spool_after` (bytes) and `cfg.main.spool_dir` (path, default `/tmp`).                 |
-| `uuid`    | `string`   | Required. Used as the spool filename base (`<spool_dir>/<uuid>.eml`).                                                       |
-| `headers` | `string[]` | Optional. Pre-parsed header lines. When supplied they are emitted first and the raw header block in stored data is skipped. |
+| Parameter | Type       | Description                                                                                                                                     |
+| --------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cfg`     | `object`   | Haraka config object. Reads `cfg.main.spool_after` (bytes; `-1` = never spool; default 25 MiB) and `cfg.main.spool_dir` (path, default `/tmp`). |
+| `uuid`    | `string`   | Required. Used as the spool filename base (`<spool_dir>/<uuid>.eml`).                                                                           |
+| `headers` | `string[]` | Optional. Pre-parsed header lines. When supplied they are emitted first and the raw header block in stored data is skipped.                     |
 
 ## Writing
 
@@ -131,6 +131,13 @@ for await (const chunk of ms[Symbol.asyncIterator]({ line_endings: '\n' })) {
 ## Spooling
 
 When `total_buffered` exceeds `cfg.main.spool_after`, the stream transparently spools to `<spool_dir>/<uuid>.eml`. The consumer API is identical in both cases. The spool file is not removed automatically — call `ms.destroy()` when done.
+
+`spool_after` accepted values:
+
+- a finite non-negative number — spool once `total_buffered` exceeds this many bytes (`0` spools immediately);
+- `-1` — never spool, keep everything in memory (matches Haraka's `connection.ini` sentinel);
+- omitted / `undefined` — fall back to a safe 25 MiB default;
+- anything else (non-numeric strings, `NaN`, other negatives) — rejected with a `console.warn`, default applies.
 
 ```js
 const cfg = {

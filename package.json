@@ -1,6 +1,6 @@
 {
   "name": "haraka-message-stream",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "Haraka email message stream",
   "main": "index.js",
   "files": [
@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/haraka/message-stream#readme",
   "devDependencies": {
-    "@haraka/eslint-config": "^2.0.4"
+    "@haraka/eslint-config": "^3.0.0"
   },
   "dependencies": {},
   "prettier": {
