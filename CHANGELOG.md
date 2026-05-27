@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.6] - 2026-05-26
 
+- fix(security): use a safe 25 MiB default for `spool_after` when missing or invalid.
+- fix(security): prevent body lines like `--__proto__--\r\n` from mutating Object.prototype
+- fix: `destroy()` during a pending spool open now closes the late-arriving fd and removes the spool file
 
 ### [2.0.5] - 2026-05-12
 

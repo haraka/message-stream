@@ -20,15 +20,115 @@ describe('MessageStream Functional Tests', () => {
       for (const file of files) {
         try {
           fs.unlinkSync(path.join(TMP_DIR, file))
-        } catch (e) {
-          // ignore
-        }
+        } catch {}
       }
       try {
         fs.rmdirSync(TMP_DIR)
-      } catch (e) {
-        // ignore
+      } catch {}
+    }
+  })
+
+  it('uses safe default spool_after when none is configured', async () => {
+    // No spool_after: previously kept all data in memory (DoS vector).
+    // Now should spool once total_buffered crosses the safe default (~25 MiB).
+    const cfg = { main: { spool_dir: TMP_DIR } }
+    const id = 'test-default-spool'
+    const ms = new MessageStream(cfg, id)
+
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    const mb = `${'a'.repeat(1024 * 1024 - 2)}\r\n` // ~1 MiB per line
+    for (let i = 0; i < 26; i++) ms.add_line(mb)
+    await new Promise((resolve) => ms.add_line_end(resolve))
+
+    assert.strictEqual(ms.spooling, true, 'should spool with the safe default')
+    ms.destroy()
+  })
+
+  it('honors spool_after=-1 as "never spool" (Haraka connection.ini sentinel)', async () => {
+    const cfg = { main: { spool_after: -1, spool_dir: TMP_DIR } }
+    const ms = new MessageStream(cfg, 'test-never-spool')
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    const mb = `${'a'.repeat(1024 * 1024 - 2)}\r\n`
+    for (let i = 0; i < 30; i++) ms.add_line(mb)
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    assert.strictEqual(ms.spooling, false, '-1 should disable spooling')
+    ms.destroy()
+  })
+
+  it('rejects non-numeric spool_after and falls back to the safe default', async () => {
+    const warns = []
+    const origWarn = console.warn
+    console.warn = (msg) => warns.push(String(msg))
+    try {
+      const cfg = { main: { spool_after: 'lots', spool_dir: TMP_DIR } }
+      const ms = new MessageStream(cfg, 'test-bad-spool')
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      ms.add_line('tiny body\r\n')
+      await new Promise((resolve) => ms.add_line_end(resolve))
+      assert.strictEqual(ms.spooling, false, 'small message stays in memory')
+      ms.destroy()
+    } finally {
+      console.warn = origWarn
+    }
+    assert.ok(
+      warns.some((w) => /spool_after/.test(w)),
+      'should warn about invalid spool_after',
+    )
+  })
+
+  it('destroy() during pending spool open closes the fd and removes the file', async () => {
+    // Delay the WriteStream 'open' event so destroy() reliably runs while
+    // open is pending. Without the C1 fix the late-arriving fd is captured
+    // by the open callback but never closed.
+    const origCreate = fs.createWriteStream
+    const origClose = fs.close
+    let receivedFd = null
+    const closedFds = []
+    fs.close = (fd, cb) => {
+      closedFds.push(fd)
+      return origClose(fd, cb)
+    }
+    fs.createWriteStream = (...args) => {
+      const ws = origCreate(...args)
+      const realEmit = ws.emit.bind(ws)
+      ws.emit = function (ev, fd, ...rest) {
+        if (ev === 'open') {
+          receivedFd = fd
+          setTimeout(() => realEmit(ev, fd, ...rest), 30)
+          return true
+        }
+        return realEmit(ev, fd, ...rest)
       }
+      return ws
+    }
+
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'destroy-pending-open'
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    try {
+      const ms = new MessageStream(cfg, id)
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      ms.add_line('xxxxxxxxxxxx\r\n')
+      ms.add_line_end()
+      ms.destroy() // open still pending
+      await new Promise((r) => setTimeout(r, 80))
+      assert.ok(receivedFd !== null, 'open event should have fired')
+      assert.ok(
+        closedFds.includes(receivedFd),
+        'fd from late open should be closed',
+      )
+      assert.equal(
+        fs.existsSync(spoolPath),
+        false,
+        'spool file should not be left behind',
+      )
+    } finally {
+      fs.createWriteStream = origCreate
+      fs.close = origClose
     }
   })
 
