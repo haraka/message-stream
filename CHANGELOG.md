@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.6] - 2026-05-26
+
+
 ### [2.0.5] - 2026-05-12
 
 - fix: restore compat shim for legacy `dot_stuffing` option (Haraka < 3.1). See haraka/email-message#23.
@@ -130,3 +133,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [2.0.3]: https://github.com/haraka/message-stream/releases/tag/v2.0.3
 [2.0.4]: https://github.com/haraka/message-stream/releases/tag/v2.0.4
 [2.0.5]: https://github.com/haraka/message-stream/releases/tag/v2.0.5
+[2.0.6]: https://github.com/haraka/message-stream/releases/tag/v2.0.6
