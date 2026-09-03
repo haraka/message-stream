@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.7] - 2026-09-03
+
+- fix(security): re-stuff constructor headers
+- packaging / meta updates (#26)
+
 ### [2.0.6] - 2026-05-26
 
 - fix(security): use a safe 25 MiB default for `spool_after` when missing or invalid.
@@ -137,3 +142,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [2.0.4]: https://github.com/haraka/message-stream/releases/tag/v2.0.4
 [2.0.5]: https://github.com/haraka/message-stream/releases/tag/v2.0.5
 [2.0.6]: https://github.com/haraka/message-stream/releases/tag/v2.0.6
+[2.0.7]: https://github.com/haraka/message-stream/releases/tag/v2.0.7

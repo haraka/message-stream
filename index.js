@@ -11,10 +11,6 @@ const LineTransformer = require('./lib/line-transformer')
 const STATE = { HEADERS: 1, BODY: 2 }
 const MAX_IDX_KEYS = 1000
 
-// Default spool threshold when cfg.main.spool_after is missing. Previously
-// the missing-value fallback was "never spool", which was an unbounded-memory
-// DoS for an MTA accepting attacker-controlled SMTP data. 25 MiB keeps the
-// vast majority of real-world traffic in RAM while still bounding worst case.
 const SPOOL_AFTER_DEFAULT = 25 * 1024 * 1024
 
 function resolveSpoolAfter(raw) {
@@ -225,14 +221,20 @@ class MessageStream extends Stream {
     // dot_stuffing is the legacy option name used by Haraka < 3.1 (inverse of dot_stuffed):
     //   dot_stuffing: true  → dot_stuffed: false (preserve stored dot-stuffing for SMTP)
     //   dot_stuffing: false → dot_stuffed: true  (unstuff for local delivery/scanning)
-    const dotStuffed =
-      options?.dot_stuffed ??
-      (options?.dot_stuffing !== undefined ? !options.dot_stuffing : true)
+    const endingDot = options?.ending_dot ?? false
+    const dotStuffed = endingDot
+      ? false
+      : (options?.dot_stuffed ??
+        (options?.dot_stuffing !== undefined ? !options.dot_stuffing : true))
+
+    const stuffHeaders = dotStuffed || endingDot
+    const dotStuff = (str) =>
+      stuffHeaders ? str.replace(/(^|\n)\./g, '$1..') : str
 
     const transformer = new LineTransformer({
       lineEndings,
       dotStuffed,
-      endingDot: options?.ending_dot ?? false,
+      endingDot,
       clamdStyle: !!options?.clamd_style,
     })
     const source = new PassThrough()
@@ -286,7 +288,7 @@ class MessageStream extends Stream {
       if (cleanedUp) return
       if (emitCtorHeaders) {
         for (const h of this.headers) {
-          source.write(Buffer.from(h.replace(/\r?\n/g, lineEndings)))
+          source.write(Buffer.from(dotStuff(h.replace(/\r?\n/g, lineEndings))))
         }
         source.write(Buffer.from(lineEndings)) // EOH marker
       }

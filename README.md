@@ -56,23 +56,23 @@ ms.pipe(createWriteStream('/tmp/out.eml'))
 
 **Pipe options**
 
-| Option         | Type               | Default  | Description                                                                                                               |
-| -------------- | ------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `line_endings` | `'\r\n'` \| `'\n'` | `'\r\n'` | Output line endings. Use `'\n'` to strip `\r` for local processing.                                                       |
-| `dot_stuffed`  | `boolean`          | `true`   | When `true`, removes SMTP dot-stuffing (`..line` → `.line`). Set to `false` when the stored data is already unstuffed.    |
-| `ending_dot`   | `boolean`          | `false`  | Append `.\r\n` (or `.\n`) after the last body line — required when forwarding over SMTP.                                  |
-| `clamd_style`  | `boolean`          | `false`  | Prefix each chunk with a 4-byte big-endian length; append a 4-byte zero terminator. Used with ClamAV's INSTREAM protocol. |
-| `skip_headers` | `boolean`          | `false`  | Omit the header block from output (emit body only).                                                                       |
-| `buffer_size`  | `number`           | `65536`  | Internal read chunk size in bytes.                                                                                        |
+| Option         | Type               | Default  | Description                                                                                                                                                                      |
+| -------------- | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `line_endings` | `'\r\n'` \| `'\n'` | `'\r\n'` | Output line endings. Use `'\n'` to strip `\r` for local processing.                                                                                                              |
+| `dot_stuffed`  | `boolean`          | `true`   | When `true`, removes SMTP dot-stuffing (`..line` → `.line`) for local delivery/scanning. Set to `false` when relaying over SMTP so stored dot-stuffing is preserved on the wire. |
+| `ending_dot`   | `boolean`          | `false`  | Append `.\r\n` (or `.\n`) after the last body line — required when forwarding over SMTP. Forces stored dot-stuffing to be preserved on the wire (overrides `dot_stuffed`).       |
+| `clamd_style`  | `boolean`          | `false`  | Prefix each chunk with a 4-byte big-endian length; append a 4-byte zero terminator. Used with ClamAV's INSTREAM protocol.                                                        |
+| `skip_headers` | `boolean`          | `false`  | Omit the header block from output (emit body only).                                                                                                                              |
+| `buffer_size`  | `number`           | `65536`  | Internal read chunk size in bytes.                                                                                                                                               |
 
 ```js
-// Forward message over SMTP — unstuff dots, add terminating dot
-ms.pipe(socket, { dot_stuffed: true, ending_dot: true })
+// Forward message over SMTP — preserve dot-stuffing, add terminating dot
+ms.pipe(socket, { dot_stuffed: false, ending_dot: true })
 
-// Local virus scan — bare LF, no dot manipulation, clamd framing
+// Local virus scan — unstuff dots, bare LF, clamd framing
 ms.pipe(clamdSocket, {
   line_endings: '\n',
-  dot_stuffed: false,
+  dot_stuffed: true,
   clamd_style: true,
 })
 
