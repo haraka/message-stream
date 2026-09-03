@@ -54,6 +54,103 @@ function getOutputFromStream(inputLines, pipeOpts) {
   })
 }
 
+// GHSA-rp4q-8m6x-c43c: header_list holds dot-unstuffed logical values; on relay
+// they must be re-stuffed or a line reading as '.' becomes an end-of-DATA
+// terminator on the backend (SMTP transaction smuggling).
+function getOutputFromCtorHeaders(headerList, bodyLines, pipeOpts) {
+  return new Promise((resolve) => {
+    const ms = new MessageStream({ main: {} }, 'msg', headerList)
+    const output = new stream.PassThrough()
+    const chunks = []
+    output.on('data', (chunk) => chunks.push(chunk.toString()))
+    output.on('end', () => resolve(chunks.join('')))
+    ms.pipe(output, pipeOpts)
+    for (const h of headerList) ms.add_line(h.endsWith('\n') ? h : `${h}\n`)
+    ms.add_line('\r\n')
+    for (const line of bodyLines) ms.add_line(line)
+    ms.add_line_end()
+  })
+}
+
+const RELAY = { dot_stuffed: false, ending_dot: true }
+const PRESERVE = { dot_stuffed: false, ending_dot: false }
+const LOCAL = { dot_stuffed: true, ending_dot: false }
+const DOT_HEADERS = ['From: a@b.com\n', 'Subject: x\n', '.\n', 'To: c@d.com\n']
+const DDOT_HEADERS = ['From: a@b.com\n', '..weird: v\n', 'To: c@d.com\n']
+const countTerminators = (out) =>
+  out.split('\r\n').filter((l) => l === '.').length
+
+describe('constructor-header dot-stuffing', function () {
+  it('re-stuffs a lone-dot header on relay so it cannot terminate DATA', async () => {
+    const out = await getOutputFromCtorHeaders(DOT_HEADERS, ['body\r\n'], RELAY)
+    assert.equal(countTerminators(out), 1)
+    assert.match(out, /Subject: x\r\n\.\.\r\nTo: c@d\.com/)
+  })
+
+  it('re-stuffs a header beginning with a dot on relay', async () => {
+    const out = await getOutputFromCtorHeaders(
+      ['From: a@b.com\n', '.foo: bar\n'],
+      ['body\r\n'],
+      RELAY,
+    )
+    assert.match(out, /^\.\.foo: bar\r\n/m)
+  })
+
+  it('stuffs a double-dot header on relay so the backend restores it', async () => {
+    const out = await getOutputFromCtorHeaders(
+      DDOT_HEADERS,
+      ['body\r\n'],
+      RELAY,
+    )
+    assert.match(out, /^\.\.\.weird: v\r\n/m)
+  })
+
+  it('cannot leak a terminator when ending_dot is combined with dot_stuffed:true', async () => {
+    const out = await getOutputFromCtorHeaders(DOT_HEADERS, ['body\r\n'], {
+      dot_stuffed: true,
+      ending_dot: true,
+    })
+    assert.equal(countTerminators(out), 1)
+    assert.match(out, /Subject: x\r\n\.\.\r\nTo: c@d\.com/)
+  })
+
+  it('leaves ordinary headers untouched on relay', async () => {
+    const out = await getOutputFromCtorHeaders(
+      ['From: a@b.com\n', 'Subject: hello\n'],
+      ['body\r\n'],
+      RELAY,
+    )
+    assert.match(out, /^From: a@b\.com\r\n/m)
+    assert.match(out, /^Subject: hello\r\n/m)
+  })
+
+  it('preserves the logical form for a non-relay preserve sink', async () => {
+    const out = await getOutputFromCtorHeaders(
+      DOT_HEADERS,
+      ['body\r\n'],
+      PRESERVE,
+    )
+    assert.match(out, /^\.\r\n/m)
+    assert.doesNotMatch(out, /^\.\.\r\n/m)
+  })
+
+  it('emits the logical lone-dot header for local delivery', async () => {
+    const out = await getOutputFromCtorHeaders(DOT_HEADERS, ['body\r\n'], LOCAL)
+    assert.match(out, /^\.\r\n/m)
+    assert.doesNotMatch(out, /^\.\.\r\n/m)
+  })
+
+  it('does not corrupt a double-dot header for local delivery', async () => {
+    const out = await getOutputFromCtorHeaders(
+      DDOT_HEADERS,
+      ['body\r\n'],
+      LOCAL,
+    )
+    assert.match(out, /^\.\.weird: v\r\n/m)
+    assert.doesNotMatch(out, /^\.weird: v\r\n/m)
+  })
+})
+
 describe('dot_stuffed = false', function () {
   const pipeOpts = { dot_stuffed: false }
 
