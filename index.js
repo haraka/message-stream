@@ -122,9 +122,8 @@ class MessageStream extends Stream {
     if (this.idx.body) this.idx.body.end = this.bytes_read
     this.#endCalled = true
     if (typeof cb === 'function') this.#endCallback = cb
-    // Call _write() only if no new data was emitted This might happen if the
-    // message size matches the size of the chunk buffer.
-    if (!this.#writeCe.end()) this.#write()
+    // Call _write() only if no new data was emitted
+    if (!this.#writeCe?.end()) this.#write()
   }
 
   #write(data) {
@@ -305,6 +304,9 @@ class MessageStream extends Stream {
           for (const chunk of this.#queue) source.write(chunk.slice(0))
           source.end()
         }
+      } else if (!this.#fd && !this.spooling) {
+        // Nothing was queued or spooled: an empty message.
+        source.end()
       } else {
         // Disk path
         const startRead = (fd) => {

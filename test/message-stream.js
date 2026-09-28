@@ -80,6 +80,34 @@ const DDOT_HEADERS = ['From: a@b.com\n', '..weird: v\n', 'To: c@d.com\n']
 const countTerminators = (out) =>
   out.split('\r\n').filter((l) => l === '.').length
 
+// An empty message (client sends DATA then an immediate ".") never calls
+// add_line, so the chunk emitter is never created and nothing is spooled.
+describe('empty message', function () {
+  it('add_line_end() does not throw when no line was added', () => {
+    const ms = new MessageStream({ main: {} }, 'empty', [])
+    assert.doesNotThrow(() => ms.add_line_end())
+  })
+
+  it('get_data() returns empty', async () => {
+    const ms = new MessageStream({ main: {} }, 'empty-get', [])
+    ms.add_line_end()
+    const data = await new Promise((resolve) => ms.get_data(resolve))
+    assert.equal(data.toString(), '')
+  })
+
+  it('relays as just the end-of-DATA terminator', async () => {
+    const ms = new MessageStream({ main: {} }, 'empty-relay', [])
+    const output = new stream.PassThrough()
+    const chunks = []
+    output.on('data', (c) => chunks.push(c.toString()))
+    const done = new Promise((resolve) => output.on('end', resolve))
+    ms.pipe(output, { dot_stuffed: false, ending_dot: true })
+    ms.add_line_end()
+    await done
+    assert.equal(chunks.join(''), '.\r\n')
+  })
+})
+
 describe('constructor-header dot-stuffing', function () {
   it('re-stuffs a lone-dot header on relay so it cannot terminate DATA', async () => {
     const out = await getOutputFromCtorHeaders(DOT_HEADERS, ['body\r\n'], RELAY)
