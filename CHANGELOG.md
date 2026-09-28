@@ -4,7 +4,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
-- fix: don't crash on a message with no lines
+### [2.0.8] - 2026-09-28
+
+- fix: don't crash on a message with no lines (#28)
 
 ### [2.0.7] - 2026-09-03
 
@@ -145,3 +147,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [2.0.5]: https://github.com/haraka/message-stream/releases/tag/v2.0.5
 [2.0.6]: https://github.com/haraka/message-stream/releases/tag/v2.0.6
 [2.0.7]: https://github.com/haraka/message-stream/releases/tag/v2.0.7
+[2.0.8]: https://github.com/haraka/message-stream/releases/tag/v2.0.8
