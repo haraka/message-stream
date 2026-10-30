@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+- fix: don't unlink an unspooled message's file (#30)
+
 ### [2.0.8] - 2026-09-28
 
 - fix: don't crash on a message with no lines (#28)

@@ -7,6 +7,15 @@ const MessageStream = require('../index')
 
 const TMP_DIR = path.join(__dirname, 'tmp')
 
+async function waitUntil(predicate, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs
+  while (!predicate()) {
+    if (Date.now() > deadline) return false
+    await new Promise((r) => setTimeout(r, 5))
+  }
+  return true
+}
+
 describe('MessageStream Functional Tests', () => {
   beforeEach(() => {
     if (!fs.existsSync(TMP_DIR)) {
@@ -115,21 +124,52 @@ describe('MessageStream Functional Tests', () => {
       ms.add_line('xxxxxxxxxxxx\r\n')
       ms.add_line_end()
       ms.destroy() // open still pending
-      await new Promise((r) => setTimeout(r, 80))
-      assert.ok(receivedFd !== null, 'open event should have fired')
       assert.ok(
-        closedFds.includes(receivedFd),
+        await waitUntil(() => closedFds.includes(receivedFd)),
         'fd from late open should be closed',
       )
-      assert.equal(
-        fs.existsSync(spoolPath),
-        false,
+      assert.ok(
+        await waitUntil(() => !fs.existsSync(spoolPath)),
         'spool file should not be left behind',
       )
     } finally {
       fs.createWriteStream = origCreate
       fs.close = origClose
     }
+  })
+
+  it('destroy() leaves the spool path alone when it never spooled', async () => {
+    const cfg = { main: { spool_dir: TMP_DIR } }
+    const id = 'destroy-unspooled'
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    fs.writeFileSync(spoolPath, 'not ours')
+
+    const ms = new MessageStream(cfg, id)
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('tiny body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    assert.equal(ms.spooling, false)
+    ms.destroy()
+    await new Promise((r) => setTimeout(r, 20))
+
+    assert.equal(fs.readFileSync(spoolPath, 'utf8'), 'not ours')
+  })
+
+  it('destroy() removes the spool file of a spooled stream', async () => {
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'destroy-spooled'
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+
+    const ms = new MessageStream(cfg, id)
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('xxxxxxxxxxxx\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    assert.equal(fs.existsSync(spoolPath), true)
+    ms.destroy()
+
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
   })
 
   it('spools to disk when buffer_max is exceeded', async () => {

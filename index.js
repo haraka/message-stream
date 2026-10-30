@@ -374,20 +374,10 @@ class MessageStream extends Stream {
 
   destroy() {
     this.#destroyed = true
-    // If a spool open is in flight, the open callback handles the cleanup
-    // (it sees #destroyed and closes the fd + unlinks the file there).
-    if (this.#openPending) return
-    try {
-      if (this.#fd) {
-        const fd = this.#fd
-        this.#fd = null
-        fs.close(fd, () => fs.unlink(this.#filename, () => {}))
-      } else {
-        fs.unlink(this.#filename, () => {})
-      }
-    } catch {
-      // best-effort cleanup
-    }
+    if (this.#openPending || !this.#fd) return
+    const fd = this.#fd
+    this.#fd = null
+    fs.close(fd, () => fs.unlink(this.#filename, () => {}))
   }
 
   get_data(options, cb) {
