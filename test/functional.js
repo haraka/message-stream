@@ -124,15 +124,12 @@ describe('MessageStream Functional Tests', () => {
       ms.add_line('xxxxxxxxxxxx\r\n')
       ms.add_line_end()
       ms.destroy() // open still pending
-      await new Promise((r) => setTimeout(r, 80))
-      assert.ok(receivedFd !== null, 'open event should have fired')
       assert.ok(
-        closedFds.includes(receivedFd),
+        await waitUntil(() => closedFds.includes(receivedFd)),
         'fd from late open should be closed',
       )
-      assert.equal(
-        fs.existsSync(spoolPath),
-        false,
+      assert.ok(
+        await waitUntil(() => !fs.existsSync(spoolPath)),
         'spool file should not be left behind',
       )
     } finally {
