@@ -7,6 +7,15 @@ const MessageStream = require('../index')
 
 const TMP_DIR = path.join(__dirname, 'tmp')
 
+async function waitUntil(predicate, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs
+  while (!predicate()) {
+    if (Date.now() > deadline) return false
+    await new Promise((r) => setTimeout(r, 5))
+  }
+  return true
+}
+
 describe('MessageStream Functional Tests', () => {
   beforeEach(() => {
     if (!fs.existsSync(TMP_DIR)) {
@@ -162,9 +171,8 @@ describe('MessageStream Functional Tests', () => {
     await new Promise((resolve) => ms.add_line_end(resolve))
     assert.equal(fs.existsSync(spoolPath), true)
     ms.destroy()
-    await new Promise((r) => setTimeout(r, 20))
 
-    assert.equal(fs.existsSync(spoolPath), false)
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
   })
 
   it('spools to disk when buffer_max is exceeded', async () => {
