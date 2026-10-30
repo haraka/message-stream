@@ -6,11 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.9] - 2026-10-30
 
-#### Fixed
-
-- don't unlink an unspooled message's file (#31)
-
-- fix: don't unlink an unspooled message's file (#30)
+- fix: don't unlink an unspooled message's file (#31)
 
 ### [2.0.8] - 2026-09-28
 
