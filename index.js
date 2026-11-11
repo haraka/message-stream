@@ -185,7 +185,10 @@ class MessageStream extends Stream {
         this.#fd = fd
         setImmediate(() => this.#write())
       })
-      this.#ws.on('error', (err) => this.emit('error', err))
+      this.#ws.on('error', (err) => {
+        // destroy() fails an in-flight write with this
+        if (err.code !== 'ERR_STREAM_DESTROYED') this.emit('error', err)
+      })
     }
 
     if (!this.#fd) return false
@@ -377,7 +380,14 @@ class MessageStream extends Stream {
     if (this.#openPending || !this.#fd) return
     const fd = this.#fd
     this.#fd = null
-    fs.close(fd, () => fs.unlink(this.#filename, () => {}))
+    const unlink = () => fs.unlink(this.#filename, () => {})
+    // unlike fs.close(), the WriteStream waits for an in-flight write to finish
+    if (this.#ws?.fd === fd) {
+      this.#ws.once('close', unlink)
+      this.#ws.destroy()
+    } else {
+      fs.close(fd, unlink)
+    }
   }
 
   get_data(options, cb) {

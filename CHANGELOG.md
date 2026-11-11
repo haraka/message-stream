@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+- fix: don't close the spool fd mid-write
+
 ### [2.0.9] - 2026-10-30
 
 - fix: don't unlink an unspooled message's file (#31)
