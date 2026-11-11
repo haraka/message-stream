@@ -779,6 +779,24 @@ describe('MessageStream Functional Tests', () => {
     }
   })
 
+  it('pipe() emits the read error once the spool file is gone', async () => {
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'pipe-after-destroy'
+    const errors = []
+    const ms = new MessageStream(cfg, id)
+    ms.on('error', (err) => errors.push(err.code))
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('spooled body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    ms.destroy()
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+
+    ms.pipe(new stream.PassThrough())
+    assert.ok(await waitUntil(() => errors.includes('ENOENT')))
+  })
+
   it('get_data() returns full body for spooled messages with ctor headers', async () => {
     const cfg = {
       main: {
