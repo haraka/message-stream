@@ -378,16 +378,10 @@ class MessageStream extends Stream {
   destroy() {
     this.#destroyed = true
     if (this.#openPending || !this.#fd) return
-    const fd = this.#fd
     this.#fd = null
-    const unlink = () => fs.unlink(this.#filename, () => {})
     // unlike fs.close(), the WriteStream waits for an in-flight write to finish
-    if (this.#ws?.fd === fd) {
-      this.#ws.once('close', unlink)
-      this.#ws.destroy()
-    } else {
-      fs.close(fd, unlink)
-    }
+    this.#ws.once('close', () => fs.unlink(this.#filename, () => {}))
+    this.#ws.destroy()
   }
 
   get_data(options, cb) {
