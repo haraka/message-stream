@@ -885,6 +885,26 @@ describe('MessageStream Functional Tests', () => {
     assert.ok(await waitUntil(() => errors.includes('ENOENT')))
   })
 
+  it('unpipe() during the read open drops its open error', async () => {
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'unpipe-during-open'
+    const errors = []
+    const ms = new MessageStream(cfg, id)
+    ms.on('error', (err) => errors.push(err.code))
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('spooled body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    ms.destroy()
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+
+    ms.pipe(new stream.PassThrough())
+    ms.unpipe()
+    await new Promise((r) => setTimeout(r, 50))
+    assert.deepEqual(errors, [])
+  })
+
   it('get_data() returns full body for spooled messages with ctor headers', async () => {
     const cfg = {
       main: {

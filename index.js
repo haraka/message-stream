@@ -320,6 +320,7 @@ class MessageStream extends Stream {
         // Disk path, on an fd of its own: destroy() may close the spool fd mid-read
         rs = fs.createReadStream(this.#filename, { start: 0 })
         rs.once('error', (err) => {
+          if (cleanedUp) return
           source.destroy(err)
           this.emit('error', err)
         })
