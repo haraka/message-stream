@@ -138,6 +138,51 @@ describe('MessageStream Functional Tests', () => {
     }
   })
 
+  it('destroy() closes the spool fd only after an in-flight write', async () => {
+    const origWrite = fs.write
+    let release
+    let written = false
+    // hold the first spool write in flight
+    fs.write = (...args) => {
+      fs.write = origWrite
+      const cb = args.pop()
+      release = () =>
+        origWrite(...args, (...res) => {
+          written = true
+          cb(...res)
+        })
+    }
+
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'destroy-write-in-flight'
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    const otherPath = path.join(TMP_DIR, 'other')
+    const errors = []
+    try {
+      const ms = new MessageStream(cfg, id)
+      ms.on('error', (err) => errors.push(err.code))
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      ms.add_line(Buffer.alloc(64 * 1024, 'x'))
+      ms.add_line(Buffer.alloc(64 * 1024, 'x'))
+
+      assert.ok(await waitUntil(() => release))
+      ms.destroy()
+      // after a premature close, the next open reuses the fd number
+      await new Promise((r) => setTimeout(r, 20))
+      const other = fs.openSync(otherPath, 'w')
+      release()
+      assert.ok(await waitUntil(() => written))
+      fs.closeSync(other)
+
+      assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+      assert.equal(fs.statSync(otherPath).size, 0)
+      assert.deepEqual(errors, [])
+    } finally {
+      fs.write = origWrite
+    }
+  })
+
   it('destroy() leaves the spool path alone when it never spooled', async () => {
     const cfg = { main: { spool_dir: TMP_DIR } }
     const id = 'destroy-unspooled'

@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Unreleased
 
 - fix: give each spooled pipe() its own read fd
+- fix: don't close the spool fd mid-write
 - fix: don't reopen the spool file after destroy()
 
 ### [2.0.9] - 2026-10-30
