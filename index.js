@@ -249,6 +249,7 @@ class MessageStream extends Stream {
     // and removes all listeners we registered. See haraka/message-stream#22.
     let cleanedUp = false
     let doRead
+    let rs
     const cleanup = () => {
       if (cleanedUp) return
       cleanedUp = true
@@ -260,6 +261,8 @@ class MessageStream extends Stream {
       // Destroy without an error to avoid spurious 'error' emissions.
       if (!source.destroyed) source.destroy()
       if (!transformer.destroyed) transformer.destroy()
+      // an abandoned read never reaches EOF to close its fd
+      rs?.destroy()
     }
     this.#activeCleanup = cleanup
 
@@ -288,8 +291,8 @@ class MessageStream extends Stream {
     const skipRawHeaders = this.headers.length > 0 || skipHeaders
 
     doRead = () => {
-      // If unpipe()/cleanup ran while we were queued on _write_complete or
-      // waiting on an async fs.open, skip the (now invalid) read.
+      // If unpipe()/cleanup ran while we were queued on _write_complete,
+      // skip the (now invalid) read.
       if (cleanedUp) return
       if (emitCtorHeaders) {
         for (const h of this.headers) {
@@ -314,41 +317,19 @@ class MessageStream extends Stream {
         // Nothing was queued or spooled: an empty message.
         source.end()
       } else {
-        // Disk path
-        const startRead = (fd) => {
-          const rs = fs.createReadStream(null, { fd, start: 0 })
-          // Prevent the fd from being closed so it can be reused across sequential pipes
-          rs.destroy = () => {}
-          rs.once('error', (err) => {
-            source.destroy(err)
-            this.emit('error', err)
-          })
-          if (skipRawHeaders) {
-            const skipper = new HeaderSkipper()
-            skipper.on('error', (err) => source.destroy(err))
-            rs.pipe(skipper).pipe(source)
-          } else {
-            rs.pipe(source)
-          }
-        }
-
-        if (this.#fd) {
-          startRead(this.#fd)
+        // Disk path, on an fd of its own: destroy() may close the spool fd mid-read
+        rs = fs.createReadStream(this.#filename, { start: 0 })
+        rs.once('error', (err) => {
+          if (cleanedUp) return
+          source.destroy(err)
+          this.emit('error', err)
+        })
+        if (skipRawHeaders) {
+          const skipper = new HeaderSkipper()
+          skipper.on('error', (err) => source.destroy(err))
+          rs.pipe(skipper).pipe(source)
         } else {
-          fs.open(this.#filename, 'r', (err, fd) => {
-            // Pipe may have been torn down while fs.open was in flight.
-            if (cleanedUp) {
-              if (fd !== undefined) fs.close(fd, () => {})
-              return
-            }
-            if (err) {
-              this.emit('error', err)
-              source.destroy(err)
-              return
-            }
-            this.#fd = fd
-            startRead(fd)
-          })
+          rs.pipe(source)
         }
       }
     }

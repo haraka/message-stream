@@ -771,6 +771,140 @@ describe('MessageStream Functional Tests', () => {
     ms.destroy()
   })
 
+  it('pipe() delivers the spooled message when destroy() runs mid-read', async () => {
+    const origRead = fs.read
+    let release
+    // hold the first spool read in flight
+    fs.read = (...args) => {
+      fs.read = origRead
+      const cb = args.pop()
+      release = () => origRead(...args, cb)
+    }
+
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const otherPath = path.join(TMP_DIR, 'other')
+    fs.writeFileSync(otherPath, 'Other: file\r\n\r\nnot this message\r\n')
+    const errors = []
+    try {
+      const ms = new MessageStream(cfg, 'destroy-mid-read')
+      ms.on('error', (err) => errors.push(err.code))
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      ms.add_line('spooled body\r\n')
+      await new Promise((resolve) => ms.add_line_end(resolve))
+
+      const chunks = []
+      let ended = false
+      const dest = new stream.PassThrough()
+      dest.on('data', (chunk) => chunks.push(chunk))
+      dest.on('end', () => {
+        ended = true
+      })
+      ms.pipe(dest)
+
+      assert.ok(await waitUntil(() => release))
+      ms.destroy()
+      // after a premature close, the next open reuses the fd number
+      await new Promise((r) => setTimeout(r, 20))
+      const other = fs.openSync(otherPath, 'r')
+      release()
+      await waitUntil(() => ended || errors.length)
+      fs.closeSync(other)
+
+      assert.deepEqual(errors, [])
+      assert.equal(
+        Buffer.concat(chunks).toString(),
+        'Header: x\r\n\r\nspooled body\r\n',
+      )
+    } finally {
+      fs.read = origRead
+    }
+  })
+
+  it('unpipe() mid-read closes the read fd and the spool pipes again', async () => {
+    const origRead = fs.read
+    const origClose = fs.close
+    const readFds = new Set()
+    const closedFds = []
+    fs.read = (fd, ...args) => {
+      readFds.add(fd)
+      return origRead(fd, ...args)
+    }
+    fs.close = (fd, cb) => {
+      closedFds.push(fd)
+      return origClose(fd, cb)
+    }
+
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    try {
+      const ms = new MessageStream(cfg, 'unpipe-mid-read')
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      const line = Buffer.from(`${'x'.repeat(1022)}\r\n`)
+      for (let i = 0; i < 2048; i++) ms.add_line(line)
+      await new Promise((resolve) => ms.add_line_end(resolve))
+
+      // a stalled consumer keeps the read short of EOF
+      ms.pipe(new stream.Writable({ write() {} }))
+      assert.ok(await waitUntil(() => readFds.size > 0))
+      const [readFd] = readFds
+      ms.unpipe()
+      assert.ok(await waitUntil(() => closedFds.includes(readFd)))
+
+      const chunks = []
+      const dest = new stream.PassThrough()
+      const done = new Promise((resolve) => {
+        dest.on('data', (chunk) => chunks.push(chunk))
+        dest.on('end', resolve)
+      })
+      ms.pipe(dest)
+      await done
+      assert.equal(Buffer.concat(chunks).length, 13 + 2048 * 1024)
+      ms.destroy()
+    } finally {
+      fs.read = origRead
+      fs.close = origClose
+    }
+  })
+
+  it('pipe() emits the read error once the spool file is gone', async () => {
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'pipe-after-destroy'
+    const errors = []
+    const ms = new MessageStream(cfg, id)
+    ms.on('error', (err) => errors.push(err.code))
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('spooled body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    ms.destroy()
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+
+    ms.pipe(new stream.PassThrough())
+    assert.ok(await waitUntil(() => errors.includes('ENOENT')))
+  })
+
+  it('unpipe() during the read open drops its open error', async () => {
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'unpipe-during-open'
+    const errors = []
+    const ms = new MessageStream(cfg, id)
+    ms.on('error', (err) => errors.push(err.code))
+    ms.add_line('Header: x\r\n')
+    ms.add_line('\r\n')
+    ms.add_line('spooled body\r\n')
+    await new Promise((resolve) => ms.add_line_end(resolve))
+    ms.destroy()
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+
+    ms.pipe(new stream.PassThrough())
+    ms.unpipe()
+    await new Promise((r) => setTimeout(r, 50))
+    assert.deepEqual(errors, [])
+  })
+
   it('get_data() returns full body for spooled messages with ctor headers', async () => {
     const cfg = {
       main: {
