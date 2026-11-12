@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [2.0.10] - 2026-11-11
+
+#### Fixed
+
+- give each spooled pipe() its own read fd (#35)
+- don't close the spool fd mid-write (#34)
+- don't reopen the spool file after destroy() (#33)
+
 - fix: give each spooled pipe() its own read fd
 - fix: don't close the spool fd mid-write
 - fix: don't reopen the spool file after destroy()
@@ -157,3 +165,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [2.0.7]: https://github.com/haraka/message-stream/releases/tag/v2.0.7
 [2.0.8]: https://github.com/haraka/message-stream/releases/tag/v2.0.8
 [2.0.9]: https://github.com/haraka/message-stream/releases/tag/v2.0.9
+[2.0.10]: https://github.com/haraka/message-stream/releases/tag/v2.0.10
