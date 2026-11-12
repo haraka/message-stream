@@ -319,11 +319,7 @@ class MessageStream extends Stream {
       } else {
         // Disk path, on an fd of its own: destroy() may close the spool fd mid-read
         rs = fs.createReadStream(this.#filename, { start: 0 })
-        rs.once('error', (err) => {
-          if (cleanedUp) return
-          source.destroy(err)
-          this.emit('error', err)
-        })
+        rs.once('error', (err) => source.destroy(err))
         if (skipRawHeaders) {
           const skipper = new HeaderSkipper()
           skipper.on('error', (err) => source.destroy(err))

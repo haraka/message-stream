@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [2.0.10] - 2026-11-11
 
+- fix: emit a spool read error once
+- chore: use node:test coverage
 - fix: give each spooled pipe() its own read fd (#35)
 - fix: don't close the spool fd mid-write (#34)
 - fix: don't reopen the spool file after destroy() (#33)

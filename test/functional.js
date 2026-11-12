@@ -722,9 +722,7 @@ describe('MessageStream Functional Tests', () => {
 
     // Slow consumer: never lets the pipe finish on its own.
     const slow = new stream.Writable({
-      write(_c, _e, cb) {
-        /* never callback — simulates a stalled remote */
-      },
+      write() {},
     })
     ms.pipe(slow)
 
@@ -883,6 +881,8 @@ describe('MessageStream Functional Tests', () => {
 
     ms.pipe(new stream.PassThrough())
     assert.ok(await waitUntil(() => errors.includes('ENOENT')))
+    await new Promise((r) => setTimeout(r, 50))
+    assert.deepEqual(errors, ['ENOENT'])
   })
 
   it('unpipe() during the read open drops its open error', async () => {
