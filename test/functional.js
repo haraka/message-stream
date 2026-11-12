@@ -172,6 +172,49 @@ describe('MessageStream Functional Tests', () => {
     assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
   })
 
+  it('destroy() with spool writes queued does not reopen the spool file', async () => {
+    const origClose = fs.close
+    const origCreate = fs.createWriteStream
+    // Delay close callbacks so the unlink in destroy() lands after any reopen.
+    fs.close = (fd, cb) => origClose(fd, (err) => setTimeout(cb, 30, err))
+    let ms
+    let destroyed = false
+    fs.createWriteStream = (...args) => {
+      const ws = origCreate(...args)
+      // destroy() between a drain and the #write() it schedules
+      ws.once('drain', () =>
+        process.nextTick(() => {
+          ms.destroy()
+          destroyed = true
+        }),
+      )
+      return ws
+    }
+
+    const cfg = { main: { spool_after: 10, spool_dir: TMP_DIR } }
+    const id = 'destroy-queued-writes'
+    const spoolPath = path.join(TMP_DIR, `${id}.eml`)
+    const errors = []
+    try {
+      ms = new MessageStream(cfg, id)
+      ms.on('error', (err) => errors.push(err.code))
+      ms.add_line('Header: x\r\n')
+      ms.add_line('\r\n')
+      const body = Buffer.alloc(64 * 1024, 'x')
+      for (let i = 0; i < 4; i++) ms.add_line(body)
+
+      assert.ok(await waitUntil(() => destroyed))
+      assert.ok(ms.buffered > 0, 'chunks were still queued')
+      assert.ok(await waitUntil(() => !fs.existsSync(spoolPath)))
+      await new Promise((r) => setTimeout(r, 50))
+      assert.deepEqual(errors, [])
+      assert.equal(fs.existsSync(spoolPath), false)
+    } finally {
+      fs.close = origClose
+      fs.createWriteStream = origCreate
+    }
+  })
+
   it('spools to disk when buffer_max is exceeded', async () => {
     const cfg = {
       main: {
