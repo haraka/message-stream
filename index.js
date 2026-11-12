@@ -167,6 +167,9 @@ class MessageStream extends Stream {
 
     if (!this.#queue.length) return false
 
+    // A drain or open callback queued before destroy() can still get here
+    if (this.#destroyed) return false
+
     // Open spool file if needed
     if (!this.#fd && !this.#openPending) {
       this.#openPending = true
